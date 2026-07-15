@@ -1,0 +1,2998 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DARTUR — Kalkulator Wycieczek</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- SheetJS usunięty: kalkulacja budowana serwerowo (Google Sheet w web app), bez zależności od CDN -->
+
+<style>
+  :root {
+    --navy: #0f1e3c;
+    --navy2: #1a2f57;
+    --gold: #c9943a;
+    --gold-light: #f0b84a;
+    --cream: #f7f3ed;
+    --white: #ffffff;
+    --gray: #8a8f9e;
+    --light: #eef1f7;
+    --green: #2d7a4f;
+    --red: #c0392b;
+    --border: #d6dae6;
+    --shadow: 0 4px 24px rgba(15,30,60,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--navy);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--navy);
+    padding: 0 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-badge {
+    background: var(--gold);
+    color: var(--navy);
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: 2px;
+    padding: 4px 12px;
+    border-radius: 4px;
+  }
+  .logo-sub { color: var(--cream); font-size: 13px; letter-spacing: 1px; opacity: 0.7; }
+  .header-title { color: var(--cream); font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600; letter-spacing: 0.5px; opacity: 0.85; }
+
+  /* LAYOUT */
+  .app { display: grid; grid-template-columns: 1fr 380px; gap: 0; min-height: calc(100vh - 64px); }
+  .main-col { padding: 32px 32px 32px 32px; overflow-y: auto; }
+  .sidebar { background: var(--navy); padding: 28px 24px; position: sticky; top: 64px; height: calc(100vh - 64px); overflow-y: auto; display: flex; flex-direction: column; gap: 0; }
+
+  /* SECTIONS */
+  .section {
+    background: var(--white);
+    border-radius: 14px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .section-header {
+    background: var(--navy);
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .section-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cream);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    flex: 1;
+  }
+  .section-icon { color: var(--gold); font-size: 18px; }
+  .chevron { color: var(--gold); font-size: 14px; transition: transform 0.2s; }
+  .chevron.open { transform: rotate(180deg); }
+  .section-body { padding: 20px; display: none; }
+  .section-body.open { display: block; }
+
+  /* FORM ELEMENTS */
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  input, select, textarea {
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--navy);
+    background: var(--cream);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(201,148,58,0.13);
+    background: var(--white);
+  }
+  input[type=number] { -moz-appearance: textfield; }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .input-unit { position: relative; }
+  .input-unit input { padding-right: 42px; }
+  .unit-label {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; color: var(--gray); pointer-events: none; font-weight: 500;
+  }
+
+  /* ATRAKCJE */
+  .attraction-row {
+    display: grid;
+    grid-template-columns: 1fr 90px 70px 75px 34px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .uslugi-header, .usluga-row {
+    display: grid;
+    grid-template-columns: 1fr 112px 80px 64px 70px 34px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .uslugi-header { margin-bottom: 4px; }
+  .uslugi-header span {
+    font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;
+  }
+  .btn-del {
+    background: #fde8e8;
+    color: var(--red);
+    border: none;
+    border-radius: 6px;
+    width: 34px; height: 34px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .btn-del:hover { background: #f5c6c6; }
+  .btn-add {
+    background: var(--navy);
+    color: var(--gold-light);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 4px;
+    transition: background 0.15s;
+  }
+  .btn-add:hover { background: var(--navy2); }
+  .preset-select {
+    margin-bottom: 10px;
+  }
+  .attractions-header {
+    display: grid;
+    grid-template-columns: 1fr 90px 70px 75px 34px;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .attractions-header span {
+    font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;
+  }
+
+  /* NOCLEG */
+  .room-row {
+    display: grid;
+    grid-template-columns: 1.3fr 48px 44px 44px 72px 78px 60px 30px;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .room-header {
+    display: grid;
+    grid-template-columns: 1.3fr 48px 44px 44px 72px 78px 60px 30px;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .room-row select { font-size: 12px; padding: 6px 2px; }
+  .room-header span { font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
+
+  /* TOGGLE CHECKBOX */
+  .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .toggle { position: relative; display: inline-block; width: 40px; height: 22px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--border); border-radius: 22px; transition: 0.2s;
+  }
+  .slider:before {
+    position: absolute; content: ""; height: 16px; width: 16px;
+    left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.2s;
+  }
+  input:checked + .slider { background: var(--gold); }
+  input:checked + .slider:before { transform: translateX(18px); }
+  .toggle-label { font-size: 13px; color: var(--navy); }
+
+  /* SIDEBAR — WYNIK */
+  .result-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .cost-line {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .cost-line:last-child { border-bottom: none; }
+  .cost-name { font-size: 12.5px; color: rgba(247,243,237,0.65); }
+  .cost-val { font-size: 13px; color: var(--cream); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .cost-line.subtotal { border-top: 1px solid rgba(255,255,255,0.15); margin-top: 4px; padding-top: 10px; }
+  .cost-line.subtotal .cost-name { color: rgba(247,243,237,0.85); font-weight: 500; }
+  .cost-line.subtotal .cost-val { color: var(--gold-light); font-weight: 600; }
+
+  .result-big {
+    background: var(--gold);
+    border-radius: 12px;
+    padding: 18px 16px;
+    text-align: center;
+    margin: 18px 0 12px;
+  }
+  .result-big-label { font-size: 11px; color: var(--navy); font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 4px; }
+  .result-big-price { font-family: 'Syne', sans-serif; font-size: 36px; font-weight: 800; color: var(--navy); line-height: 1; }
+  .result-big-unit { font-size: 14px; color: var(--navy); opacity: 0.7; margin-top: 2px; }
+
+  .result-variants { margin: 10px 0 16px; }
+  .variant-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+    margin-bottom: 4px;
+  }
+  .variant-label { font-size: 12px; color: rgba(247,243,237,0.6); }
+  .variant-price { font-size: 13px; color: var(--cream); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .zaliczka-box {
+    background: rgba(255,255,255,0.07);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .zaliczka-label { font-size: 12px; color: rgba(247,243,237,0.6); }
+  .zaliczka-val { font-size: 16px; font-weight: 700; color: var(--gold-light); font-variant-numeric: tabular-nums; }
+
+  /* BUTTONS */
+  .btn-primary {
+    background: var(--gold);
+    color: var(--navy);
+    border: none;
+    border-radius: 10px;
+    padding: 13px 20px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    letter-spacing: 0.5px;
+    transition: background 0.15s, transform 0.1s;
+    margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-primary:hover { background: var(--gold-light); transform: translateY(-1px); }
+  .btn-secondary {
+    background: rgba(255,255,255,0.08);
+    color: var(--cream);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 11px 20px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    letter-spacing: 0.5px;
+    transition: background 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.13); }
+
+  /* NOTATKI */
+  textarea { resize: vertical; min-height: 70px; }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: rgba(255,255,255,0.1); margin: 14px 0; }
+
+  /* PRINT SUMMARY */
+  .print-area { display: none; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(15,30,60,0.7); z-index: 999;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 560px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal h3 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
+  .modal p { font-size: 14px; color: var(--gray); line-height: 1.6; margin-bottom: 12px; }
+  .modal pre { background: var(--cream); border-radius: 8px; padding: 12px; font-size: 12px; color: var(--navy); overflow-x: auto; margin-bottom: 16px; white-space: pre-wrap; }
+  .modal-close {
+    background: var(--navy); color: var(--white); border: none;
+    border-radius: 8px; padding: 10px 20px; font-family: 'Syne', sans-serif;
+    font-weight: 600; cursor: pointer; font-size: 14px; margin-top: 8px;
+  }
+
+  /* BADGE */
+  .badge {
+    background: var(--gold);
+    color: var(--navy);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: static; height: auto; }
+    .main-col { padding: 16px; }
+  }
+
+  .section-body .field-row:last-child,
+  .section-body .field-row-3:last-child { margin-bottom: 0; }
+
+  select option { background: white; }
+
+  .info-note {
+    background: #eef4ff;
+    border-left: 3px solid var(--navy);
+    border-radius: 0 6px 6px 0;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--navy2);
+    margin-top: 10px;
+  }
+
+  .currency-note { font-size: 11px; color: var(--gray); margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-badge">DARTUR</div>
+    <div class="logo-sub">Biuro Podróży</div>
+  </div>
+  <div class="header-title">🧮 Kalkulator Wycieczek Grupowych</div>
+</header>
+
+<div class="app">
+  <!-- LEWA KOLUMNA -->
+  <div class="main-col">
+
+    <!-- 1. DANE PODSTAWOWE -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-icon">📋</span>
+        <h2>Dane podstawowe</h2>
+        <span class="chevron open">▼</span>
+      </div>
+      <div class="section-body open">
+        <div class="field-row">
+          <div class="field">
+            <label>Kto sporządził ofertę</label>
+            <input type="text" id="sporzadzil" list="osoby-list" placeholder="np. Karolina" oninput="calc()">
+            <datalist id="osoby-list">
+              <option value="Karolina"></option>
+              <option value="Paweł"></option>
+              <option value="Małgorzata"></option>
+              <option value="Marzena"></option>
+            </datalist>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Nazwa klienta / grupy</label>
+            <input type="text" id="klient" placeholder="np. Szkoła Podstawowa nr 5" oninput="calc()">
+          </div>
+          <div class="field">
+            <label>Kierunek wycieczki</label>
+            <select id="kierunek" onchange="onKierunekChange()">
+              <option value="">— wybierz kierunek —</option>
+              <optgroup label="⭐ Najczęstsze (2026)">
+                <option value="Warszawa z teatrem (1 dzień)">Warszawa z teatrem (1 dzień)</option>
+                <option value="Warszawa z Buffo – Piotruś Pan (1 dzień)">Warszawa z Buffo – Piotruś Pan (1 dzień)</option>
+                <option value="Warszawa z Teatrem ROMA (1 dzień)">Warszawa z Teatrem ROMA (1 dzień)</option>
+                <option value="Świętokrzyskie (1 dzień)">Świętokrzyskie (1 dzień)</option>
+                <option value="Świętokrzyskie (2 dni)">Świętokrzyskie (2 dni)</option>
+                <option value="Kraków + Wieliczka (2 dni)">Kraków + Wieliczka (2 dni)</option>
+                <option value="Kraków + Bochnia + Ojców (2 dni)">Kraków + Bochnia + Ojców (2 dni)</option>
+                <option value="Kraków + Energylandia (2 dni)">Kraków + Energylandia (2 dni)</option>
+                <option value="Wrocław – Praga – Kudowa (3 dni)">Wrocław – Praga – Kudowa (3 dni)</option>
+                <option value="Pstrągowa – Jasionka (2–3 dni)">Pstrągowa – Jasionka (2–3 dni)</option>
+                <option value="Pieniny (2–5 dni)">Pieniny (2–5 dni)</option>
+                <option value="Zamość (1 dzień)">Zamość (1 dzień)</option>
+                <option value="Bałtów (1 dzień)">Bałtów (1 dzień)</option>
+                <option value="Roztocze (1–2 dni)">Roztocze (1–2 dni)</option>
+                <option value="Orle Gniazda – Ogrodzieniec (1–3 dni)">Orle Gniazda – Ogrodzieniec (1–3 dni)</option>
+              </optgroup>
+              <optgroup label="Polska – wycieczki szkolne">
+                <option value="Lublin (1 dzień)">Lublin (1 dzień)</option>
+                <option value="Kazimierz Dolny (1 dzień)">Kazimierz Dolny (1 dzień)</option>
+                <option value="Kielce + Jaskinia Raj (1 dzień)">Kielce + Jaskinia Raj (1 dzień)</option>
+                <option value="Sandomierz (1–2 dni)">Sandomierz (1–2 dni)</option>
+                <option value="Bieszczady (2–4 dni)">Bieszczady (2–4 dni)</option>
+                <option value="Trójmiasto – Malbork (3 dni)">Trójmiasto – Malbork (3 dni)</option>
+                <option value="Zakopane – Tatry (3–4 dni)">Zakopane – Tatry (3–4 dni)</option>
+                <option value="Zakopane – Kraków">Zakopane – Kraków</option>
+                <option value="Mazury (3–4 dni)">Mazury (3–4 dni)</option>
+                <option value="Supraśl – Tykocin (3 dni)">Supraśl – Tykocin (3 dni)</option>
+                <option value="Krynica Zdrój – Ciężkowice (2 dni)">Krynica Zdrój – Ciężkowice (2 dni)</option>
+                <option value="Doboszówka / Osada Leśna (1 dzień)">Doboszówka / Osada Leśna (1 dzień)</option>
+                <option value="Fabryka Bombek (1 dzień)">Fabryka Bombek (1 dzień)</option>
+                <option value="Farma Iluzji (1 dzień)">Farma Iluzji (1 dzień)</option>
+                <option value="Bałtów Zima (1 dzień)">Bałtów Zima (1 dzień)</option>
+                <option value="Energylandia – Auschwitz (2 dni)">Energylandia – Auschwitz (2 dni)</option>
+                <option value="Łódź – Mandoria (2 dni)">Łódź – Mandoria (2 dni)</option>
+                <option value="Łańcut – Leżajsk (1 dzień)">Łańcut – Leżajsk (1 dzień)</option>
+                <option value="Lasy Janowskie – kajaki (1 dzień)">Lasy Janowskie – kajaki (1 dzień)</option>
+              </optgroup>
+              <optgroup label="Zagranica">
+                <option value="Barcelona / Katalonia (3–4 dni)">Barcelona / Katalonia (3–4 dni)</option>
+                <option value="Czechy – Wiedeń (4 dni)">Czechy – Wiedeń (4 dni)</option>
+                <option value="Węgry – Budapeszt (4 dni)">Węgry – Budapeszt (4 dni)</option>
+                <option value="Grecja – Peloponez (4 dni)">Grecja – Peloponez (4 dni)</option>
+                <option value="Majorka (3 dni)">Majorka (3 dni)</option>
+                <option value="Rzym (3 dni)">Rzym (3 dni)</option>
+                <option value="Berlin – Poznań (3 dni)">Berlin – Poznań (3 dni)</option>
+                <option value="Kotlina Kłodzka – Praga (3 dni)">Kotlina Kłodzka – Praga (3 dni)</option>
+              </optgroup>
+              <option value="inne">✏️ Własny kierunek...</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" id="kierunek-custom-wrap" style="display:none">
+          <label>Własny kierunek</label>
+          <input type="text" id="kierunek-custom" placeholder="Wpisz nazwę wycieczki" oninput="calc()">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Zamawiający — imię i nazwisko</label>
+            <input type="text" id="zamawiajacy" placeholder="np. Anna Kowalska" oninput="calc()">
+          </div>
+          <div class="field">
+            <label>Kontakt (tel. / e-mail)</label>
+            <input type="text" id="kontakt" placeholder="np. 600 000 000 / mail@szkola.pl" oninput="calc()">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Miejscowość / miasto</label>
+            <input type="text" id="miasto" placeholder="np. Lublin" oninput="calc()">
+          </div>
+          <div class="field"></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Data wyjazdu</label>
+            <input type="date" id="data-od" oninput="calc()">
+          </div>
+          <div class="field">
+            <label>Data powrotu</label>
+            <input type="date" id="data-do" oninput="calc()">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Termin opisowy — jeśli bez konkretnej daty</label>
+            <input type="text" id="termin-opis" placeholder="np. wiosna 2026 · maj 2026 · do ustalenia" oninput="calc()">
+          </div>
+          <div class="field"></div>
+        </div>
+        <div style="font-size:11px;color:var(--gray);margin:-2px 0 8px">Wpisz porę roku lub miesiąc, gdy data nie jest jeszcze znana — wtedy pola „Data wyjazdu/powrotu" są ignorowane, a wycieczka trafia do folderu z tym opisem zamiast daty.</div>
+        <div class="toggle-row" style="margin-top:4px;margin-bottom:8px">
+          <label class="toggle"><input type="checkbox" id="chce-umowe" onchange="calc()"><span class="slider"></span></label>
+          <span class="toggle-label">Utwórz też umowę (dla 1-dniowych; wielodniowe zawsze mają umowę)</span>
+        </div>
+        <div class="field-row-3">
+          <div class="field">
+            <label>Uczniowie / płacący</label>
+            <input type="number" id="uczestnicy" value="20" min="1" oninput="calc()">
+          </div>
+          <div class="field">
+            <label>Opiekunowie (gratis — nie płacą)</label>
+            <input type="number" id="opiekunowie" value="2" min="0" oninput="calc()">
+          </div>
+          <div class="field">
+            <label>Pilot / przewodnik (gratis — nie płaci)</label>
+            <input type="number" id="pilot-os" value="1" min="0" max="2" oninput="calc()">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Imię i nazwisko pilota (na rozliczenie wydatków dla pilota)</label>
+            <input type="text" id="pilot-imie" placeholder="np. Jan Kowalski" oninput="calc()">
+          </div>
+          <div class="field"></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Kurs EUR (zł)</label>
+            <div class="input-unit">
+              <input type="number" id="kurs-eur" value="4.25" step="0.01" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Marża — typ</label>
+            <select id="marza-typ" onchange="onMarzaTyp()" style="margin-bottom:6px">
+              <option value="procent">Procent od kosztów (%)</option>
+              <option value="kwota">Stała kwota (zł)</option>
+            </select>
+            <div id="marza-procent-wrap" class="input-unit">
+              <input type="number" id="marza" value="10" step="0.5" min="0" max="100" oninput="calc()">
+              <span class="unit-label">%</span>
+            </div>
+            <div id="marza-kwota-wrap" class="input-unit" style="display:none">
+              <input type="number" id="marza-kwota" value="2000" step="100" min="0" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>VAT od marży</label>
+            <div class="toggle-row" style="margin:0">
+              <label class="toggle"><input type="checkbox" id="vat-wlaczony" checked onchange="calc()"><span class="slider"></span></label>
+              <span class="toggle-label">Dolicz 23% VAT od marży</span>
+            </div>
+          </div>
+        </div>
+        <div class="info-note">
+          💡 <strong>Cena końcowa dzieli się tylko przez "Uczniów / płacących".</strong> Opiekunowie i pilot jadą gratis — ich koszty biletów i ubezpieczenia wliczają się w koszty, ale nie płacą za wycieczkę.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. TRANSPORT -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-icon">🚌</span>
+        <h2>Transport</h2>
+        <span class="chevron open">▼</span>
+      </div>
+      <div class="section-body open">
+        <div class="toggle-row" style="margin-bottom:14px">
+          <label class="toggle"><input type="checkbox" id="transport-staly" onchange="onTransportToggle()"><span class="slider"></span></label>
+          <span class="toggle-label">Stały koszt (zamiast km × stawka)</span>
+        </div>
+        <div id="transport-km-block">
+          <div class="field-row">
+            <div class="field">
+              <label>Kilometry (łącznie)</label>
+              <div class="input-unit">
+                <input type="number" id="km" value="800" oninput="calc()">
+                <span class="unit-label">km</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Stawka za km</label>
+              <div class="input-unit">
+                <input type="number" id="km-stawka" value="6.50" step="0.10" oninput="calc()">
+                <span class="unit-label">zł</span>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Zakładka bezpieczeństwa (%)</label>
+            <div class="input-unit">
+              <input type="number" id="km-zakl" value="5" min="0" max="20" oninput="calc()">
+              <span class="unit-label">%</span>
+            </div>
+          </div>
+        </div>
+        <div id="transport-staly-block" style="display:none">
+          <div class="field">
+            <label>Koszt transportu (łącznie)</label>
+            <div class="input-unit">
+              <input type="number" id="transport-kwota" value="3200" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Opłaty drogowe</label>
+            <div class="input-unit">
+              <input type="number" id="drogi" value="450" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Parkingi</label>
+            <div class="input-unit">
+              <input type="number" id="parkingi" value="200" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+        </div>
+        <div class="toggle-row" style="margin-top:4px">
+          <label class="toggle"><input type="checkbox" id="ma-kierowca2" onchange="onKierowca2Toggle()"><span class="slider"></span></label>
+          <span class="toggle-label">Drugi kierowca (dłuższe trasy)</span>
+        </div>
+        <div id="kierowca2-block" style="display:none; margin-top:8px">
+          <div class="field-row">
+            <div class="field">
+              <label>Koszt drugiego kierowcy (zł/dzień)</label>
+              <div class="input-unit">
+                <input type="number" id="kierowca2-koszt" value="300" oninput="calc()">
+                <span class="unit-label">zł</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Liczba dni</label>
+              <input type="number" id="kierowca2-dni" value="1" min="0" oninput="calc()">
+            </div>
+          </div>
+          <div class="info-note" style="margin-top:4px">Koszt drugiego kierowcy = kwota za dzień × liczba dni. Doliczane do transportu.</div>
+        </div>
+
+        <div class="toggle-row">
+          <label class="toggle"><input type="checkbox" id="ma-samolot" onchange="calc()"><span class="slider"></span></label>
+          <span class="toggle-label">Doliczyć bilet lotniczy dla pilota</span>
+        </div>
+        <div id="samolot-block" style="display:none; margin-top:10px">
+          <div class="field">
+            <label>Koszt biletu lotniczego (pilot)</label>
+            <div class="input-unit">
+              <input type="number" id="samolot-kwota" value="1800" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. NOCLEG -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-icon">🏨</span>
+        <h2>Nocleg</h2>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="toggle-row" style="margin-bottom:14px">
+          <label class="toggle"><input type="checkbox" id="ma-nocleg" onchange="onNoclegToggle()"><span class="slider"></span></label>
+          <span class="toggle-label">Wycieczka z noclegiem</span>
+        </div>
+        <div id="nocleg-block" style="display:none">
+          <div class="field-row">
+            <div class="field">
+              <label>Liczba noclegów</label>
+              <input type="number" id="noclegi-ile" value="2" min="1" oninput="calc()">
+            </div>
+            <div class="field">
+              <label>Waluta ceny noclegu</label>
+              <select id="nocleg-waluta" onchange="onNoclegWaluta()">
+                <option value="PLN">PLN (złote)</option>
+                <option value="EUR">EUR (euro)</option>
+              </select>
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:10px">
+            <label>Dodaj hotel z listy (auto-cena)</label>
+            <select id="preset-hotel" onchange="addRoomPreset()">
+              <option value="">— wybierz hotel z listy —</option>
+            </select>
+          </div>
+          <div class="room-header">
+            <span>Hotel / typ pokoju</span>
+            <span>Os./pok.</span>
+            <span>Pok.</span>
+            <span>Noce</span>
+            <span>Cena/noc</span>
+            <span>Licz wg</span>
+            <span>Taksa/os</span>
+            <span></span>
+          </div>
+          <div id="rooms-list">
+            <!-- wypełniane przez JS -->
+          </div>
+          <button class="btn-add" onclick="addRoom()">＋ Dodaj typ pokoju</button>
+          <div id="taksa-block" style="margin-top:14px">
+            <div class="field-row">
+              <div class="field">
+                <label>Domyślna taksa klimatyczna (na os/dobę)</label>
+                <div class="input-unit">
+                  <input type="number" id="taksa" value="0" step="0.50" oninput="calc()">
+                  <span class="unit-label" id="taksa-unit">w walucie noclegu</span>
+                </div>
+                <div style="font-size:11px;color:var(--gray);margin-top:4px">Podpowiedź dla nowych noclegów — taksę wpisuje się przy KAŻDYM noclegu w kolumnie „Taksa/os" (część hoteli ma taksę, część nie). Liczona: taksa × wszyscy (z pilotem) × doby.</div>
+              </div>
+              <div class="field">
+                <label>Taksa dotyczy osób</label>
+                <input type="number" id="taksa-os" value="0" placeholder="0 = wszyscy" oninput="calc()">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. PILOT / PRZEWODNIK -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-icon">🎤</span>
+        <h2>Pilot i Przewodnik</h2>
+        <span class="chevron open">▼</span>
+      </div>
+      <div class="section-body open">
+
+        <!-- PILOT -->
+        <div style="font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🧑‍✈️ Pilot</div>
+        <div id="pilot-dni-list"></div>
+        <button class="btn-add" onclick="addPilotDzien('pilot')">＋ Dodaj dzień pilota</button>
+
+        <!-- PRZEWODNIK -->
+        <div style="margin-top:16px">
+          <div class="toggle-row" style="margin-bottom:8px">
+            <label class="toggle"><input type="checkbox" id="ma-przewodnik" onchange="onPrzewodnikToggle()"><span class="slider"></span></label>
+            <span style="font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px">🗺️ Przewodnik (osobno)</span>
+          </div>
+          <div id="przewodnik-block" style="display:none">
+            <div id="przewodnik-dni-list"></div>
+            <button class="btn-add" onclick="addPilotDzien('przewodnik')">＋ Dodaj dzień przewodnika</button>
+            <div class="field" style="margin-top:10px">
+              <label>Opis — za co jest kwota przewodnika</label>
+              <input type="text" id="przewodnik-opis" placeholder="np. przewodnik lokalny w Pradze — 2 wejścia + oprowadzanie" oninput="calc()">
+            </div>
+            <div class="info-note" style="margin-top:8px">Przewodnik to osobna osoba od pilota — np. lokalny przewodnik w Pradze lub Barcelonie.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 4b. SŁUCHAWKI -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-icon">🎧</span>
+        <h2>Słuchawki</h2>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="toggle-row" style="margin-bottom:10px">
+          <label class="toggle"><input type="checkbox" id="ma-sluchawki" onchange="onSluchawkiToggle()"><span class="slider"></span></label>
+          <span class="toggle-label">Doliczyć słuchawki</span>
+        </div>
+        <div id="sluchawki-block" style="display:none">
+          <div class="field-row-3">
+            <div class="field">
+              <label>Stawka (zł/os/dzień)</label>
+              <div class="input-unit">
+                <input type="number" id="sluchawki" value="4.50" step="0.50" oninput="calc()">
+                <span class="unit-label">zł</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Liczba osób</label>
+              <input type="number" id="sluchawki-os" value="0" placeholder="0=wszyscy" oninput="calc()">
+            </div>
+            <div class="field">
+              <label>Liczba dni</label>
+              <input type="number" id="sluchawki-dni" value="1" min="0" oninput="markManual(this); calc()">
+            </div>
+          </div>
+          <div class="info-note">0 w polu "Liczba osób" = automatycznie wszyscy uczestnicy</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4c. WYŻYWIENIE -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-icon">🍽️</span>
+        <h2>Wyżywienie</h2>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div id="wyzywienie-list"></div>
+        <button class="btn-add" onclick="addWyzywienie()">＋ Dodaj pozycję wyżywienia</button>
+        <div class="info-note" style="margin-top:8px">Każda pozycja mnożona przez podaną liczbę osób. 0 = wszyscy uczestnicy.</div>
+      </div>
+    </div>
+
+    <!-- 4d. TRANSPORT LOTNICZY -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-icon">✈️</span>
+        <h2>Transport Lotniczy</h2>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="toggle-row" style="margin-bottom:10px">
+          <label class="toggle"><input type="checkbox" id="ma-lot" onchange="onLotToggle()"><span class="slider"></span></label>
+          <span class="toggle-label">Wycieczka z lotem</span>
+        </div>
+        <div id="lot-block" style="display:none">
+          <div class="field-row">
+            <div class="field">
+              <label>Koszt biletu (zł/os)</label>
+              <div class="input-unit">
+                <input type="number" id="lot-bilet" value="1800" oninput="calc()">
+                <span class="unit-label">zł</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Liczba osób (bilet)</label>
+              <input type="number" id="lot-os" value="0" placeholder="0=wszyscy" oninput="calc()">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Bus na lotnisko (zł łącznie)</label>
+              <div class="input-unit">
+                <input type="number" id="lot-bus" value="0" oninput="calc()">
+                <span class="unit-label">zł</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Inne opłaty lotniskowe (zł)</label>
+              <div class="input-unit">
+                <input type="number" id="lot-inne" value="0" oninput="calc()">
+                <span class="unit-label">zł</span>
+              </div>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <label class="toggle"><input type="checkbox" id="lot-pilot" onchange="calc()"><span class="slider"></span></label>
+            <span class="toggle-label">Doliczyć bilet pilota (osobno)</span>
+          </div>
+          <div id="lot-pilot-block" style="display:none; margin-top:8px">
+            <div class="field">
+              <label>Bilet pilota (zł)</label>
+              <div class="input-unit">
+                <input type="number" id="lot-pilot-kwota" value="1800" oninput="calc()">
+                <span class="unit-label">zł</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. ATRAKCJE / BILETY -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-icon">🎭</span>
+        <h2>Atrakcje i Bilety Wstępu</h2>
+        <span class="chevron open">▼</span>
+      </div>
+      <div class="section-body open">
+        <div class="field preset-select">
+          <label>Dodaj z listy gotowych atrakcji</label>
+          <select id="preset-atrakcja" onchange="addPreset()">
+            <option value="">— wybierz atrakcję z listy —</option>
+            <optgroup label="Polska">
+              <option value="Panorama Racławicka|55|PLN">Panorama Racławicka — 55 zł/os</option>
+              <option value="Muzeum Narodowe Warszawa|1|PLN">Muzeum Narodowe Warszawa — 1 zł/os</option>
+              <option value="Spektakl Piotruś Pan Studio Buffo|100|PLN">Spektakl Piotruś Pan Studio Buffo — 100 zł/os</option>
+              <option value="Kaplica Czaszek / Ruchoma Szopka|15|PLN">Kaplica Czaszek / Ruchoma Szopka — 15 zł/os</option>
+              <option value="Muzeum Wedla Warszawa|55|PLN">Muzeum Wedla Warszawa — 55 zł/os</option>
+            </optgroup>
+            <optgroup label="Zagranica (EUR)">
+              <option value="Barcelona (wycieczka z przewodnikiem)|60|EUR">Barcelona — wycieczka — 60 EUR/os</option>
+              <option value="Park Güell (bilet)|20|EUR">Park Güell — bilet — 20 EUR/os</option>
+              <option value="Sagrada Familia (bilet)|30|EUR">Sagrada Familia — bilet — 30 EUR/os</option>
+              <option value="Montserrat (wycieczka)|65|EUR">Montserrat — wycieczka — 65 EUR/os</option>
+              <option value="Girona + Tossa de Mar + bodega|70|EUR">Girona + Tossa de Mar + bodega — 70 EUR/os</option>
+              <option value="Rejs katamaranem|20|EUR">Rejs katamaranem — 20 EUR/os</option>
+              <option value="Kolejka na Montserrat|15|EUR">Kolejka na Montserrat — 15 EUR/os</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="attractions-header">
+          <span>Nazwa atrakcji</span>
+          <span>Cena/os</span>
+          <span>Waluta</span>
+          <span>Ile osób</span>
+          <span></span>
+        </div>
+        <div id="attractions-list"></div>
+        <button class="btn-add" onclick="addAttraction()">＋ Dodaj własną atrakcję</button>
+        <div class="info-note" style="margin-top:8px">
+          "Ile osób" — wpisz ręcznie żeby uwzględnić gratisy, pilota, opiekunów. <strong>0 = wszyscy uczestnicy + opiekunowie + pilot.</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5b. USŁUGI ZEWNĘTRZNE (poza atrakcjami) -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-icon">🧾</span>
+        <h2>Usługi Zewnętrzne</h2>
+        <span class="chevron open">▼</span>
+      </div>
+      <div class="section-body open">
+        <div class="info-note" style="margin-bottom:10px">
+          Usługi obcych firm doliczane do kalkulacji (np. animator, obsługa techniczna, pilot lokalny, wynajem sprzętu). Wybierz sposób liczenia: <strong>cena ustalona</strong> (jedna kwota za całość) albo <strong>za uczestnika</strong> (kwota × osoby).
+        </div>
+        <div class="uslugi-header">
+          <span>Nazwa usługi</span>
+          <span>Sposób</span>
+          <span>Kwota</span>
+          <span>Waluta</span>
+          <span>Ile osób</span>
+          <span></span>
+        </div>
+        <div id="uslugi-list"></div>
+        <button class="btn-add" onclick="addUsluga()">＋ Dodaj usługę zewnętrzną</button>
+        <div class="info-note" style="margin-top:8px">
+          „Sposób = Cena ustalona" → kwota liczy się raz (pole „Ile osób" ignorowane). „Za uczestnika" → kwota × osoby (0 = wszyscy: uczestnicy + opiekunowie + pilot). EUR przelicza się kursem i trafia do części zagranicznej.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. UBEZPIECZENIE I KOSZTY STAŁE -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-icon">🛡️</span>
+        <h2>Ubezpieczenie i Koszty Stałe</h2>
+        <span class="chevron open">▼</span>
+      </div>
+      <div class="section-body open">
+        <!-- UBEZPIECZENIE PL -->
+        <div class="toggle-row" style="margin-bottom:8px">
+          <label class="toggle"><input type="checkbox" id="ubezp-pl-wl" checked onchange="calc()"><span class="slider"></span></label>
+          <span class="toggle-label" style="font-weight:600">Ubezpieczenie PL</span>
+        </div>
+        <div id="ubezp-pl-block">
+          <div class="field-row">
+            <div class="field">
+              <label>Stawka (zł/os/dzień)</label>
+              <div class="input-unit">
+                <input type="number" id="ubezp-pl" value="4.00" step="0.25" oninput="calc()">
+                <span class="unit-label">zł</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Liczba dni PL</label>
+              <input type="number" id="ubezp-pl-dni" value="3" min="0" oninput="markManual(this); calc()">
+            </div>
+          </div>
+        </div>
+
+        <!-- UBEZPIECZENIE ZAGRANICZNE -->
+        <div class="toggle-row" style="margin-bottom:8px; margin-top:10px">
+          <label class="toggle"><input type="checkbox" id="ubezp-zagr-wl" onchange="onUbezpZagrToggle()"><span class="slider"></span></label>
+          <span class="toggle-label" style="font-weight:600">Ubezpieczenie zagraniczne</span>
+        </div>
+        <div id="ubezp-zagr-block" style="display:none">
+          <div class="field-row">
+            <div class="field">
+              <label>Stawka (zł/os/dzień)</label>
+              <div class="input-unit">
+                <input type="number" id="ubezp-zagr" value="1.00" step="0.25" oninput="calc()">
+                <span class="unit-label">zł</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Liczba dni zagranica</label>
+              <input type="number" id="ubezp-zagr-dni" value="1" min="0" oninput="calc()">
+            </div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:10px">
+          <label>Liczba osób do ubezpieczenia <span style="font-weight:400;color:#888">(auto = wszyscy; możesz nadpisać)</span></label>
+          <input type="number" id="ubezp-os" value="0" oninput="markManual(this); calc()" placeholder="auto = uczestnicy+opiekunowie+pilot">
+        </div>
+        <div class="info-note">
+          Np. 3 dni PL + 1 dzień zagranica gdy grupa śpi w Polsce ale jedzie do Pragi.
+        </div>
+        <div style="margin-top:14px;font-weight:600;font-size:13px;color:var(--navy)">🎁 Gadżety dla uczestników (2 rodzaje)</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Gadżet 1 — cena (zł/szt)</label>
+            <div class="input-unit">
+              <input type="number" id="gadzet1-cena" value="5" step="0.5" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Gadżet 1 — ilość (szt)</label>
+            <input type="number" id="gadzet1-szt" value="0" min="0" placeholder="0 = liczba uczniów" oninput="calc()">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Gadżet 2 — cena (zł/szt)</label>
+            <div class="input-unit">
+              <input type="number" id="gadzet2-cena" value="0" step="0.5" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Gadżet 2 — ilość (szt)</label>
+            <input type="number" id="gadzet2-szt" value="0" min="0" placeholder="0 = liczba uczniów" oninput="calc()">
+          </div>
+        </div>
+        <div class="info-note" style="margin-top:4px">Każdy gadżet liczony osobno: cena × ilość. Ilość <strong>0</strong> = liczba uczniów. Drugi gadżet zostaw z ceną 0, jeśli niepotrzebny.</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Opłata księgowa (zł)</label>
+            <div class="input-unit">
+              <input type="number" id="ksiegowa" value="55" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>TFG (zł/os) — Fundusz Gwarancyjny</label>
+            <div class="input-unit">
+              <input type="number" id="tfg" value="30" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>TFP (zł/os) — Fundusz Pomocowy</label>
+            <div class="input-unit">
+              <input type="number" id="tfp" value="0" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+          <div class="field">
+            <label style="color:#888;font-weight:400">TFG i TFP liczą się tylko od uczestników na umowie</label>
+            <div style="font-size:12px;color:var(--gray);padding-top:6px">uczniowie + opiekunowie · bez pilota, kierowcy i przewodnika</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Korekta ceny (zł/os) — zaokrąglenie</label>
+            <div class="input-unit">
+              <input type="number" id="korekta-os" value="0" step="0.5" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+          <div class="field">
+            <label style="color:#888;font-weight:400">Ręczne +/– do ceny za osobę</label>
+            <div style="font-size:12px;color:var(--gray);padding-top:6px">np. <strong>+1,60</strong> zaokrągli 273,40 → 275,00. Może być ujemna (odejmuje).</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Zaliczka (zł/os)</label>
+            <div class="input-unit">
+              <input type="number" id="zaliczka" value="100" oninput="calc()">
+              <span class="unit-label">zł</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Oferta ważna do</label>
+            <input type="date" id="oferta-wazna" oninput="calc()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. NOTATKI -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-icon">📝</span>
+        <h2>Notatki</h2>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="field">
+          <label>Uwagi do kalkulacji (widoczne tylko dla Ciebie)</label>
+          <textarea id="notatki" placeholder="np. bilety kupione 12.01, hotel potwierdzony, klient zaakceptował ofertę..." oninput="calc()"></textarea>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-col -->
+
+  <!-- PRAWA KOLUMNA — WYNIK -->
+  <div class="sidebar">
+    <div class="result-title">💰 Kalkulacja na żywo</div>
+
+    <div id="result-breakdown">
+      <!-- JS -->
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="result-big">
+      <div class="result-big-label">Cena / osobę</div>
+      <div class="result-big-price" id="cena-os">— zł</div>
+      <div class="result-big-unit" id="cena-os-sub">÷ <span id="uc-label">20</span> uczniów (płacących)</div>
+    </div>
+
+    <div class="result-variants" id="result-variants">
+      <!-- warianty -->
+    </div>
+
+    <div class="zaliczka-box">
+      <span class="zaliczka-label">Zaliczka / os</span>
+      <span class="zaliczka-val" id="zaliczka-display">100 zł</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="btn-secondary" onclick="printSummary()">
+      📄 Eksport PDF / Drukuj
+    </button>
+    <button class="btn-secondary" onclick="copySummary()" style="margin-top:6px">
+      📋 Kopiuj dane do schowka
+    </button>
+    <button class="btn-primary" onclick="generateGoogleSheet()" style="margin-top:6px">
+      📁 Utwórz folder / kalkulację
+    </button>
+
+    <div class="divider"></div>
+    <div style="font-size:11px; color:rgba(247,243,237,0.35); text-align:center; line-height:1.5">
+      DARTUR Biuro Podróży<br>darturlublin.pl · +48 695 132 039
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CANVA -->
+<div class="modal-overlay" id="canva-modal">
+  <div class="modal" style="max-width:640px; max-height:90vh; overflow-y:auto">
+    <h3>✨ Generuj ofertę w Canvie</h3>
+    <p style="margin-bottom:14px">Kliknij <strong>Otwórz szablon</strong> — otworzy się Twoja Canva. Potem klikaj kolejne zakładki, kopiuj tekst i wklejaj w odpowiednie miejsca oferty.</p>
+
+    <!-- PRZYCISK OTWIERAJĄCY CANVĘ -->
+    <a id="canva-open-link" href="https://www.canva.com/brand/brand-templates/EAHKMqc_t_4" target="_blank"
+      style="display:block; background:#c9943a; color:#0f1e3c; text-align:center; padding:12px; border-radius:10px; font-family:Syne,sans-serif; font-weight:700; font-size:14px; text-decoration:none; margin-bottom:18px">
+      🎨 Otwórz szablon w Canvie
+    </a>
+
+    <!-- ZAKŁADKI STRON -->
+    <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap">
+      <button onclick="showCanvaPage(1)" id="tab-1" style="flex:1; padding:8px; border-radius:8px; border:2px solid #c9943a; background:#c9943a; color:#0f1e3c; font-family:Syne,sans-serif; font-weight:700; font-size:13px; cursor:pointer">📄 Strona 1<br><small>Okładka</small></button>
+      <button onclick="showCanvaPage(2)" id="tab-2" style="flex:1; padding:8px; border-radius:8px; border:2px solid #d6dae6; background:white; color:#0f1e3c; font-family:Syne,sans-serif; font-weight:700; font-size:13px; cursor:pointer">📄 Strona 2<br><small>Program</small></button>
+      <button onclick="showCanvaPage(3)" id="tab-3" style="flex:1; padding:8px; border-radius:8px; border:2px solid #d6dae6; background:white; color:#0f1e3c; font-family:Syne,sans-serif; font-weight:700; font-size:13px; cursor:pointer">📄 Strona 3<br><small>Cena i info</small></button>
+    </div>
+
+    <!-- INSTRUKCJA -->
+    <div id="canva-instruction" style="background:#eef4ff; border-radius:8px; padding:10px 14px; font-size:12px; color:#1a2f57; margin-bottom:10px; line-height:1.5"></div>
+
+    <!-- POLA DO KOPIOWANIA -->
+    <div id="canva-fields" style="max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:12px"></div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap">
+      <button onclick="closeCanvaModal()" style="flex:1; background:#eef1f7; color:#0f1e3c; border:none; border-radius:8px; padding:11px 16px; font-family:Syne,sans-serif; font-weight:700; font-size:13px; cursor:pointer">Zamknij</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== STATE ======
+let rooms = [];
+let attractions = [];
+let pilotDni = [];
+let przewodnikDni = [];
+
+// ====== INIT ======
+function init() {
+  addRoom('2-osobowy Hotel A', 2, 9, 220, 2);
+  addRoom('1-osobowy (dopłata)', 1, 1, 280, 2);
+  addPilotDzien('pilot', 750);
+  addPilotDzien('pilot', 850);
+  addPilotDzien('pilot', 750);
+  renderPrzewodnikDni();
+  renderWyzywienie();
+  renderUslugi();
+  setToday();
+  calc();
+}
+
+function setToday() {
+  const today = new Date();
+  const s = today.toISOString().split('T')[0];
+  if (!document.getElementById('data-od').value) {
+    const future = new Date(today); future.setMonth(future.getMonth()+2);
+    document.getElementById('data-od').value = future.toISOString().split('T')[0];
+    const future2 = new Date(future); future2.setDate(future2.getDate()+2);
+    document.getElementById('data-do').value = future2.toISOString().split('T')[0];
+  }
+  const waz = new Date(today); waz.setMonth(waz.getMonth()+1);
+  document.getElementById('oferta-wazna').value = waz.toISOString().split('T')[0];
+}
+
+// ====== SECTIONS ======
+function toggleSection(header) {
+  const body = header.nextElementSibling;
+  const chev = header.querySelector('.chevron');
+  const open = body.classList.toggle('open');
+  chev.classList.toggle('open', open);
+}
+
+// ====== TRANSPORT ======
+function onTransportToggle() {
+  const staly = document.getElementById('transport-staly').checked;
+  document.getElementById('transport-km-block').style.display = staly ? 'none' : '';
+  document.getElementById('transport-staly-block').style.display = staly ? '' : 'none';
+  calc();
+}
+document.getElementById('ma-samolot').addEventListener('change', function() {
+  document.getElementById('samolot-block').style.display = this.checked ? '' : 'none';
+  calc();
+});
+
+// ====== NOCLEG ======
+function onNoclegToggle() {
+  const ma = document.getElementById('ma-nocleg').checked;
+  document.getElementById('nocleg-block').style.display = ma ? '' : 'none';
+  calc();
+}
+function onNoclegWaluta() { calc(); }
+
+function addRoom(typ='2-osobowy Hotel A', os=2, ile=5, cena=220, noc=2, taksa=null, tryb='pokoj') {
+  const id = Date.now() + Math.random();
+  // domyślna taksa dla nowego noclegu = wartość z pola „domyślna taksa" (w walucie noclegu)
+  const taksaDef = (taksa != null) ? taksa : (parseFloat((document.getElementById('taksa')||{}).value)||0);
+  // tryb: 'pokoj' = cena za pokój (cena × pokoje); 'osoba' = cena za osobę (cena × osoby)
+  rooms.push({id, typ, os, ile, cena, noc, taksa: taksaDef, tryb});
+  renderRooms(); calc();
+}
+// Dodaj nocleg z listy gotowych hoteli (auto-cena + tryb + waluta). Wartość: "typ|cena|tryb|waluta".
+function addRoomPreset() {
+  const sel = document.getElementById('preset-hotel');
+  const v = sel.value;
+  if (!v) return;
+  const [typ, cena, tryb, waluta] = v.split('|');
+  // włącz nocleg, jeśli wyłączony
+  const chk = document.getElementById('ma-nocleg');
+  if (chk && !chk.checked) { chk.checked = true; if (typeof onNoclegToggle === 'function') onNoclegToggle(); }
+  // ustaw walutę noclegu (EUR/PLN) wg presetu
+  const wsel = document.getElementById('nocleg-waluta');
+  if (wsel && waluta) { wsel.value = waluta; if (typeof onNoclegWaluta === 'function') onNoclegWaluta(); }
+  const noc = parseInt(document.getElementById('noclegi-ile').value) || 1;
+  // tryb 'osoba' (HB/os) → os=1, ile = liczba osób (popraw ręcznie); 'pokoj' → standardowo
+  if (tryb === 'osoba') addRoom(typ, 1, 10, parseFloat(cena) || 0, noc, 0, 'osoba');
+  else                  addRoom(typ, 2, 5,  parseFloat(cena) || 0, noc, 0, 'pokoj');
+  sel.value = '';
+}
+function removeRoom(id) {
+  rooms = rooms.filter(r => r.id !== id);
+  renderRooms(); calc();
+}
+function renderRooms() {
+  const list = document.getElementById('rooms-list');
+  list.innerHTML = '';
+  rooms.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'room-row';
+    div.innerHTML = `
+      <input type="text" value="${r.typ}" onchange="updateRoom(${r.id},'typ',this.value)" placeholder="np. 2-os Hotel Panorama">
+      <input type="number" value="${r.os}" min="1" max="10" onchange="updateRoom(${r.id},'os',+this.value)" title="Osób/pokój">
+      <input type="number" value="${r.ile}" min="0" onchange="updateRoom(${r.id},'ile',+this.value)" title="Pokoi">
+      <input type="number" value="${r.noc||1}" min="1" onchange="updateRoom(${r.id},'noc',+this.value)" title="Noce">
+      <input type="number" value="${r.cena}" min="0" onchange="updateRoom(${r.id},'cena',+this.value)" title="Cena/noc — za pokój albo za osobę (wybierz w kolumnie „Licz wg")">
+      <select onchange="updateRoom(${r.id},'tryb',this.value)" title="Jak liczyć cenę: za pokój (cena × pokoje) czy za osobę (cena × osoby)">
+        <option value="pokoj" ${(r.tryb||'pokoj')==='pokoj'?'selected':''}>za pokój</option>
+        <option value="osoba" ${r.tryb==='osoba'?'selected':''}>za osobę</option>
+      </select>
+      <input type="number" value="${r.taksa||0}" min="0" step="0.50" onchange="updateRoom(${r.id},'taksa',+this.value)" title="Taksa klimatyczna za osobę za dobę (w walucie noclegu; 0 = hotel bez taksy)">
+      <button class="btn-del" onclick="removeRoom(${r.id})">✕</button>
+    `;
+    list.appendChild(div);
+  });
+}
+function updateRoom(id, field, val) {
+  const r = rooms.find(x=>x.id===id);
+  if(r) r[field] = val;
+  calc();
+}
+
+// ====== WYŻYWIENIE ======
+let wyzywienie = [];
+function addWyzywienie(nazwa='Obiad', cena=46, os=0) {
+  const id = Date.now() + Math.random();
+  wyzywienie.push({id, nazwa, cena, os});
+  renderWyzywienie(); calc();
+}
+function removeWyzywienie(id) {
+  wyzywienie = wyzywienie.filter(x=>x.id!==id);
+  renderWyzywienie(); calc();
+}
+function renderWyzywienie() {
+  const list = document.getElementById('wyzywienie-list');
+  list.innerHTML = '';
+  if(!wyzywienie.length) { list.innerHTML = '<div style="font-size:12px;color:var(--gray);padding:4px 0">Brak pozycji — kliknij ＋ aby dodać</div>'; return; }
+  wyzywienie.forEach(w => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:grid;grid-template-columns:1fr 90px 80px 34px;gap:6px;align-items:center;margin-bottom:8px';
+    div.innerHTML = `
+      <input type="text" value="${w.nazwa}" onchange="updateWyz(${w.id},'nazwa',this.value)" placeholder="np. Obiadokolacja">
+      <input type="number" value="${w.cena}" min="0" onchange="updateWyz(${w.id},'cena',+this.value)" placeholder="zł/os">
+      <input type="number" value="${w.os}" min="0" onchange="updateWyz(${w.id},'os',+this.value)" placeholder="0=wszyscy">
+      <button class="btn-del" onclick="removeWyzywienie(${w.id})">✕</button>
+    `;
+    list.appendChild(div);
+  });
+  // nagłówek
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'display:grid;grid-template-columns:1fr 90px 80px 34px;gap:6px;margin-bottom:4px';
+  hdr.innerHTML = '<span style="font-size:11px;color:var(--gray);text-transform:uppercase;font-weight:500">Nazwa</span><span style="font-size:11px;color:var(--gray);text-transform:uppercase;font-weight:500">zł/os</span><span style="font-size:11px;color:var(--gray);text-transform:uppercase;font-weight:500">Ile os (0=wszyscy)</span><span></span>';
+  list.insertBefore(hdr, list.firstChild);
+}
+function updateWyz(id, field, val) {
+  const w = wyzywienie.find(x=>x.id===id);
+  if(w) w[field] = val;
+  calc();
+}
+
+// ====== TRANSPORT LOTNICZY ======
+function onLotToggle() {
+  document.getElementById('lot-block').style.display = document.getElementById('ma-lot').checked ? '' : 'none';
+  calc();
+}
+document.addEventListener('DOMContentLoaded', function() {
+  const lotPilot = document.getElementById('lot-pilot');
+  if(lotPilot) lotPilot.addEventListener('change', function() {
+    document.getElementById('lot-pilot-block').style.display = this.checked ? '' : 'none';
+    calc();
+  });
+});
+
+// ====== SŁUCHAWKI ======
+function onSluchawkiToggle() {
+  document.getElementById('sluchawki-block').style.display = document.getElementById('ma-sluchawki').checked ? '' : 'none';
+  calc();
+}
+
+// ====== AUTO-UZUPEŁNIANIE (osoby/dni) z możliwością ręcznego nadpisania ======
+function markManual(el){ if(el) el.dataset.auto = '0'; }   // ręczna zmiana → przestań auto-uzupełniać to pole
+
+function syncAuto(){
+  const nOs = parseInt(document.getElementById('uczestnicy').value)||0;
+  const opiek = parseInt(document.getElementById('opiekunowie').value)||0;
+  const pilotOs = parseInt(document.getElementById('pilot-os').value)||0;
+  const allOs = nOs + opiek + pilotOs;
+  const dni = getDni();
+  const ubOs = document.getElementById('ubezp-os');
+  if(ubOs && ubOs.dataset.auto !== '0') ubOs.value = allOs;     // osoby do ubezpieczenia = wszyscy
+  const ubDni = document.getElementById('ubezp-pl-dni');
+  if(ubDni && ubDni.dataset.auto !== '0') ubDni.value = dni;    // dni ubezpieczenia PL = dni wycieczki
+  const slDni = document.getElementById('sluchawki-dni');
+  if(slDni && slDni.dataset.auto !== '0') slDni.value = dni;    // dni słuchawek = dni wycieczki
+}
+
+// ====== DRUGI KIEROWCA ======
+function onKierowca2Toggle(){
+  const ma = document.getElementById('ma-kierowca2').checked;
+  document.getElementById('kierowca2-block').style.display = ma ? '' : 'none';
+  calc();
+}
+
+// ====== PILOT STAWKI ======
+// typ = 'pilot' lub 'przewodnik'
+function addPilotDzien(typ='pilot', stawka=650) {
+  const id = Date.now() + Math.random();
+  if(typ === 'przewodnik') {
+    przewodnikDni.push({id, stawka});
+    renderPrzewodnikDni();
+  } else {
+    pilotDni.push({id, stawka});
+    renderPilotDni();
+  }
+  calc();
+}
+function removePilotDzien(id, typ='pilot') {
+  if(typ === 'przewodnik') {
+    przewodnikDni = przewodnikDni.filter(p=>p.id!==id);
+    renderPrzewodnikDni();
+  } else {
+    pilotDni = pilotDni.filter(p=>p.id!==id);
+    renderPilotDni();
+  }
+  calc();
+}
+function renderPilotDni() {
+  const list = document.getElementById('pilot-dni-list');
+  if(!list) return;
+  list.innerHTML = '';
+  if(!pilotDni.length) { list.innerHTML = '<div style="font-size:12px;color:var(--gray);padding:4px 0">Brak — kliknij ＋ aby dodać</div>'; return; }
+  pilotDni.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px';
+    div.innerHTML = `
+      <label style="font-size:12px;color:var(--gray);min-width:50px">Dzień ${i+1}</label>
+      <div class="input-unit" style="flex:1">
+        <input type="number" value="${p.stawka}" onchange="updateDzien('pilot',${p.id},+this.value)">
+        <span class="unit-label">zł</span>
+      </div>
+      <button class="btn-del" onclick="removePilotDzien(${p.id},'pilot')">✕</button>
+    `;
+    list.appendChild(div);
+  });
+}
+function renderPrzewodnikDni() {
+  const list = document.getElementById('przewodnik-dni-list');
+  if(!list) return;
+  list.innerHTML = '';
+  if(!przewodnikDni.length) { list.innerHTML = '<div style="font-size:12px;color:var(--gray);padding:4px 0">Brak — kliknij ＋ aby dodać</div>'; return; }
+  przewodnikDni.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px';
+    div.innerHTML = `
+      <label style="font-size:12px;color:var(--gray);min-width:50px">Dzień ${i+1}</label>
+      <div class="input-unit" style="flex:1">
+        <input type="number" value="${p.stawka}" onchange="updateDzien('przewodnik',${p.id},+this.value)">
+        <span class="unit-label">zł</span>
+      </div>
+      <button class="btn-del" onclick="removePilotDzien(${p.id},'przewodnik')">✕</button>
+    `;
+    list.appendChild(div);
+  });
+}
+function updateDzien(typ, id, val) {
+  const arr = typ === 'przewodnik' ? przewodnikDni : pilotDni;
+  const p = arr.find(x=>x.id===id);
+  if(p) p.stawka = val;
+  calc();
+}
+function updatePilotDzien(id, val) { updateDzien('pilot', id, val); }
+
+function onPrzewodnikToggle() {
+  const ma = document.getElementById('ma-przewodnik').checked;
+  document.getElementById('przewodnik-block').style.display = ma ? '' : 'none';
+  calc();
+}
+function onUbezpZagrToggle() {
+  const ma = document.getElementById('ubezp-zagr-wl').checked;
+  document.getElementById('ubezp-zagr-block').style.display = ma ? '' : 'none';
+  calc();
+}
+
+// ====== ATRAKCJE ======
+function addPreset() {
+  const sel = document.getElementById('preset-atrakcja');
+  const val = sel.value;
+  if(!val) return;
+  const [nazwa, cena, waluta] = val.split('|');
+  addAttractionItem(nazwa, parseFloat(cena), waluta);
+  sel.value = '';
+}
+function addAttraction() { addAttractionItem('', 0, 'PLN', 0); }
+function addAttractionItem(nazwa='', cena=0, waluta='PLN', os=0) {
+  const id = Date.now() + Math.random();
+  attractions.push({id, nazwa, cena, waluta, os});
+  renderAttractions(); calc();
+}
+function removeAttraction(id) {
+  attractions = attractions.filter(a=>a.id!==id);
+  renderAttractions(); calc();
+}
+function renderAttractions() {
+  const list = document.getElementById('attractions-list');
+  list.innerHTML = '';
+  attractions.forEach(a => {
+    const div = document.createElement('div');
+    div.className = 'attraction-row';
+    div.innerHTML = `
+      <input type="text" value="${a.nazwa}" placeholder="np. Zamek Królewski" onchange="updateAttr(${a.id},'nazwa',this.value)">
+      <input type="number" value="${a.cena}" min="0" step="0.5" onchange="updateAttr(${a.id},'cena',+this.value)">
+      <select onchange="updateAttr(${a.id},'waluta',this.value)">
+        <option value="PLN" ${a.waluta==='PLN'?'selected':''}>PLN</option>
+        <option value="EUR" ${a.waluta==='EUR'?'selected':''}>EUR</option>
+      </select>
+      <input type="number" value="${a.os||0}" min="0" placeholder="0=wszyscy" onchange="updateAttr(${a.id},'os',+this.value)" title="0=wszyscy uczestnicy+opiekunowie+pilot">
+      <button class="btn-del" onclick="removeAttraction(${a.id})">✕</button>
+    `;
+    list.appendChild(div);
+  });
+}
+function updateAttr(id, field, val) {
+  const a = attractions.find(x=>x.id===id);
+  if(a) a[field] = val;
+  calc();
+}
+
+// ====== USŁUGI ZEWNĘTRZNE (poza atrakcjami) ======
+let uslugi = [];
+function addUsluga() { addUslugaItem('', 'stala', 0, 'PLN', 0); }
+function addUslugaItem(nazwa='', typ='stala', kwota=0, waluta='PLN', os=0) {
+  const id = Date.now() + Math.floor(Math.random()*1000);
+  uslugi.push({id, nazwa, typ, kwota, waluta, os});
+  renderUslugi(); calc();
+}
+function removeUsluga(id) {
+  uslugi = uslugi.filter(u=>u.id!==id);
+  renderUslugi(); calc();
+}
+function renderUslugi() {
+  const list = document.getElementById('uslugi-list');
+  if(!list) return;
+  list.innerHTML = '';
+  if(!uslugi.length) { list.innerHTML = '<div style="font-size:12px;color:var(--gray);padding:4px 0">Brak usług — kliknij ＋ aby dodać</div>'; return; }
+  uslugi.forEach(u => {
+    const div = document.createElement('div');
+    div.className = 'usluga-row';
+    const perOs = u.typ==='os';
+    div.innerHTML = `
+      <input type="text" value="${u.nazwa}" placeholder="np. animator, obsługa techniczna" onchange="updateUsluga(${u.id},'nazwa',this.value)">
+      <select onchange="updateUsluga(${u.id},'typ',this.value)">
+        <option value="stala" ${u.typ==='stala'?'selected':''}>Cena ustalona</option>
+        <option value="os" ${u.typ==='os'?'selected':''}>Za uczestnika</option>
+      </select>
+      <input type="number" value="${u.kwota}" min="0" step="0.5" onchange="updateUsluga(${u.id},'kwota',+this.value)" title="${perOs?'kwota za osobę':'kwota za całość'}">
+      <select onchange="updateUsluga(${u.id},'waluta',this.value)">
+        <option value="PLN" ${u.waluta==='PLN'?'selected':''}>PLN</option>
+        <option value="EUR" ${u.waluta==='EUR'?'selected':''}>EUR</option>
+      </select>
+      <input type="number" value="${u.os||0}" min="0" placeholder="0=wszyscy" ${perOs?'':'disabled'} onchange="updateUsluga(${u.id},'os',+this.value)" title="${perOs?'0=wszyscy uczestnicy+opiekunowie+pilot':'ignorowane przy cenie ustalonej'}" style="${perOs?'':'opacity:0.4'}">
+      <button class="btn-del" onclick="removeUsluga(${u.id})">✕</button>
+    `;
+    list.appendChild(div);
+  });
+}
+function updateUsluga(id, field, val) {
+  const u = uslugi.find(x=>x.id===id);
+  if(u) u[field] = val;
+  if(field==='typ') renderUslugi();   // pokaż/ukryj „Ile osób"
+  calc();
+}
+
+// ====== KIERUNEK ======
+function onMarzaTyp() {
+  const typ = document.getElementById('marza-typ').value;
+  document.getElementById('marza-procent-wrap').style.display = typ==='procent' ? '' : 'none';
+  document.getElementById('marza-kwota-wrap').style.display = typ==='kwota' ? '' : 'none';
+  calc();
+}
+
+// Mapa kierunków → grupy atrakcji do pokazania
+const KIERUNEK_ATRAKCJE = {
+  'warszawa': ['Polska', 'Warszawa', 'Warszawa – nowe atrakcje', 'Warszawa – dodatkowe'],
+  'kraków': ['Polska', 'Kraków'],
+  'krakow': ['Polska', 'Kraków'],
+  'wieliczka': ['Polska', 'Kraków'],
+  'energylandia': ['Polska', 'Kraków'],
+  'bochnia': ['Polska', 'Kraków'],
+  'barcelona': ['Zagranica (EUR)'],
+  'katalon': ['Zagranica (EUR)'],
+  'girona': ['Zagranica (EUR)'],
+  'lloret': ['Zagranica (EUR)'],
+  'świętokrzyskie': ['Polska', 'Świętokrzyskie'],
+  'swietokrzyskie': ['Polska', 'Świętokrzyskie'],
+  'kielce': ['Polska', 'Świętokrzyskie'],
+  'zamość': ['Polska', 'Zamość i okolice'],
+  'zamosc': ['Polska', 'Zamość i okolice'],
+  'kazimierz': ['Polska', 'Kazimierz / Sandomierz'],
+  'sandomierz': ['Polska', 'Kazimierz / Sandomierz'],
+  'lublin': ['Polska', 'Lublin – atrakcje', 'Lublin – dodatkowe'],
+  'bombek': ['Polska', 'Fabryka Bombek (Nowy Sącz)'],
+  'mazury': ['Polska', 'Mazury'],
+  'zakopane': ['Polska', 'Zakopane / Tatry'],
+  'tatry': ['Polska', 'Zakopane / Tatry'],
+  'doboszówka': ['Polska', 'Doboszówka / Osada Leśna'],
+  'osada': ['Polska', 'Doboszówka / Osada Leśna'],
+  'roztocze': ['Polska', 'Zamość i okolice', 'Przyroda i aktywne'],
+  'pieniny': ['Polska', 'Przyroda i aktywne'],
+  'bieszczady': ['Polska', 'Przyroda i aktywne'],
+  'orle': ['Polska', 'Przyroda i aktywne'],
+  'wrocław': ['Polska'],
+  'wroclaw': ['Polska'],
+  'praga': ['Polska'],
+  'kudowa': ['Polska'],
+};
+
+function filterAttractionsByKierunek(kierunek) {
+  const k = kierunek.toLowerCase();
+  const presetSel = document.getElementById('preset-atrakcja');
+  if(!presetSel) return;
+
+  // Znajdź pasujące grupy
+  let matchedGroups = new Set(['Polska']); // zawsze pokaż ogólne PL
+  Object.keys(KIERUNEK_ATRAKCJE).forEach(key => {
+    if(k.includes(key)) KIERUNEK_ATRAKCJE[key].forEach(g => matchedGroups.add(g));
+  });
+
+  // Pokaż/ukryj optgroup
+  Array.from(presetSel.querySelectorAll('optgroup')).forEach(og => {
+    const show = matchedGroups.has(og.label);
+    og.style.display = show ? '' : 'none';
+  });
+
+  // Jeśli nic nie dopasowano — pokaż wszystko
+  const anyVisible = Array.from(presetSel.querySelectorAll('optgroup')).some(og => og.style.display !== 'none');
+  if(!anyVisible) {
+    Array.from(presetSel.querySelectorAll('optgroup')).forEach(og => og.style.display = '');
+  }
+}
+
+function onKierunekChange() {
+  const val = document.getElementById('kierunek').value;
+  document.getElementById('kierunek-custom-wrap').style.display = val==='inne' ? '' : 'none';
+  // Filtruj atrakcje wg kierunku
+  filterAttractionsByKierunek(val);
+  calc();
+}
+
+// ====== OBLICZENIA ======
+function getDni() {
+  const od = document.getElementById('data-od').value;
+  const ddo = document.getElementById('data-do').value;
+  if(!od || !ddo) return 1;
+  const diff = (new Date(ddo) - new Date(od)) / 86400000;
+  return Math.max(1, Math.round(diff) + 1);
+}
+
+function calcTotal(nOs) {
+  const kurs = parseFloat(document.getElementById('kurs-eur').value)||4.25;
+  const dni = getDni();
+  const opiek = parseInt(document.getElementById('opiekunowie').value)||0;
+  const pilotOs = parseInt(document.getElementById('pilot-os').value)||1;
+  const allOs = nOs + opiek + pilotOs;
+
+  // TRANSPORT AUTOKAR
+  let kosztTransport = 0;
+  if(document.getElementById('transport-staly').checked) {
+    kosztTransport = parseFloat(document.getElementById('transport-kwota').value)||0;
+  } else {
+    const km = parseFloat(document.getElementById('km').value)||0;
+    const stawka = parseFloat(document.getElementById('km-stawka').value)||6.5;
+    const zakl = 1 + (parseFloat(document.getElementById('km-zakl').value)||5)/100;
+    kosztTransport = km * zakl * stawka;
+  }
+  const drogi = parseFloat(document.getElementById('drogi').value)||0;
+  const parkingi = parseFloat(document.getElementById('parkingi').value)||0;
+  // DRUGI KIEROWCA (dłuższe trasy) = koszt/dzień × liczba dni
+  let kierowca2 = 0;
+  if(document.getElementById('ma-kierowca2') && document.getElementById('ma-kierowca2').checked){
+    kierowca2 = (parseFloat(document.getElementById('kierowca2-koszt').value)||0)
+              * (parseInt(document.getElementById('kierowca2-dni').value)||0);
+  }
+  const transport = kosztTransport + drogi + parkingi + kierowca2;
+
+  // TRANSPORT LOTNICZY
+  let lotKoszt = 0;
+  if(document.getElementById('ma-lot') && document.getElementById('ma-lot').checked) {
+    const lotBiletCena = parseFloat(document.getElementById('lot-bilet').value)||0;
+    const lotOs = parseInt(document.getElementById('lot-os').value)||0;
+    const lotOsCount = lotOs > 0 ? lotOs : allOs;
+    lotKoszt += lotBiletCena * lotOsCount;
+    lotKoszt += parseFloat(document.getElementById('lot-bus').value)||0;
+    lotKoszt += parseFloat(document.getElementById('lot-inne').value)||0;
+    if(document.getElementById('lot-pilot') && document.getElementById('lot-pilot').checked) {
+      lotKoszt += parseFloat(document.getElementById('lot-pilot-kwota').value)||0;
+    }
+  }
+
+  // ZAGRANICA = koszty liczone w EUR (auto): pokoje EUR + atrakcje EUR. Do podziału VAT.
+  let zagr = 0;
+
+  // NOCLEG — każdy pokój ma własną liczbę nocy + własną taksę klimatyczną (per nocleg).
+  let noclegBaza = 0;   // same pokoje
+  let taksaKoszt = 0;   // taksa klimatyczna (liczona per nocleg: taksa × wszyscy × doby)
+  if(document.getElementById('ma-nocleg').checked) {
+    const nocWaluta = document.getElementById('nocleg-waluta').value;
+    const taksaOs = parseInt(document.getElementById('taksa-os').value)||0;
+    const taksaOsCount = taksaOs > 0 ? taksaOs : allOs;
+    rooms.forEach(r => {
+      const noc = r.noc || parseInt(document.getElementById('noclegi-ile').value)||1;
+      // tryb 'osoba' = cena za osobę (cena × osoby × pokoje); 'pokoj' = cena za pokój (cena × pokoje)
+      const liczba = (r.tryb==='osoba') ? (r.ile||0)*(r.os||0) : (r.ile||0);
+      let kwota = liczba * r.cena * noc;
+      if(nocWaluta==='EUR') kwota *= kurs;
+      noclegBaza += kwota;
+      if(nocWaluta==='EUR') zagr += kwota;
+      // taksa per nocleg: taksa(os/doba) × wszyscy (z pilotem) × doby tego noclegu
+      let tk = (r.taksa||0) * taksaOsCount * noc;
+      if(nocWaluta==='EUR') { tk *= kurs; zagr += tk; }
+      taksaKoszt += tk;
+    });
+  }
+  const nocleg = noclegBaza + taksaKoszt;
+
+  // PILOT + PRZEWODNIK
+  let pilotKoszt = pilotDni.reduce((s,p)=>s+p.stawka,0);
+  const maPrzewodnik = document.getElementById('ma-przewodnik') && document.getElementById('ma-przewodnik').checked;
+  if(maPrzewodnik) pilotKoszt += przewodnikDni.reduce((s,p)=>s+p.stawka,0);
+
+  // SŁUCHAWKI — osobna sekcja
+  let sluchKoszt = 0;
+  if(document.getElementById('ma-sluchawki') && document.getElementById('ma-sluchawki').checked) {
+    const sluch = parseFloat(document.getElementById('sluchawki').value)||0;
+    const sluchOs = parseInt(document.getElementById('sluchawki-os').value)||0;
+    const sluchOsCount = sluchOs > 0 ? sluchOs : nOs;
+    const sluchDni = parseFloat(document.getElementById('sluchawki-dni').value)||0;
+    sluchKoszt = sluch * sluchOsCount * sluchDni;
+  }
+
+  // WYŻYWIENIE
+  let wyzywienieKoszt = 0;
+  wyzywienie.forEach(w => {
+    const osCount = w.os > 0 ? w.os : allOs;
+    wyzywienieKoszt += w.cena * osCount;
+  });
+
+  // ATRAKCJE — każda ma własną liczbę osób (EUR → zagranica)
+  let atrakcjeKoszt = 0;
+  attractions.forEach(a => {
+    let cena = a.cena;
+    const osCount = (a.os && a.os > 0) ? a.os : allOs;
+    if(a.waluta==='EUR') { cena *= kurs; zagr += cena * osCount; }
+    atrakcjeKoszt += cena * osCount;
+  });
+
+  // USŁUGI ZEWNĘTRZNE — cena ustalona (raz) albo za uczestnika (× osoby). EUR → zagranica.
+  let uslugiKoszt = 0;
+  uslugi.forEach(u => {
+    let kwota = parseFloat(u.kwota) || 0;
+    if(u.waluta==='EUR') kwota *= kurs;
+    const val = (u.typ==='os') ? kwota * ((u.os && u.os>0) ? u.os : allOs) : kwota;
+    if(u.waluta==='EUR') zagr += val;
+    uslugiKoszt += val;
+  });
+
+  // UBEZPIECZENIE — ręczne dni
+  const ubPlWl = document.getElementById('ubezp-pl-wl') ? document.getElementById('ubezp-pl-wl').checked : true;
+  const ubZagrWl = document.getElementById('ubezp-zagr-wl') ? document.getElementById('ubezp-zagr-wl').checked : false;
+  const ubPl = ubPlWl ? (parseFloat(document.getElementById('ubezp-pl').value)||4) : 0;
+  const ubZagr = ubZagrWl ? (parseFloat(document.getElementById('ubezp-zagr').value)||1) : 0;
+  const ubPlDni = ubPlWl ? (parseInt(document.getElementById('ubezp-pl-dni').value)||0) : 0;
+  const ubZagrDni = ubZagrWl ? (parseInt(document.getElementById('ubezp-zagr-dni').value)||0) : 0;
+  const ubezpOs = parseInt(document.getElementById('ubezp-os').value)||0;
+  const ubezpOsCount = ubezpOs > 0 ? ubezpOs : allOs;
+  const ubezpKraj = ubPl * ubPlDni * ubezpOsCount;      // krajowe (NNW PL)
+  const ubezpZagr = ubZagr * ubZagrDni * ubezpOsCount;  // zagraniczne (KL/assistance) → zagranica
+  const ubezp = ubezpKraj + ubezpZagr;
+  zagr += ubezpZagr;
+
+  // GADŻETY — 2 rodzaje, każdy: cena × ilość (ilość 0 = liczba uczniów)
+  const g1c = parseFloat((document.getElementById('gadzet1-cena')||{}).value)||0;
+  const g1s = parseInt((document.getElementById('gadzet1-szt')||{}).value)||0;
+  const g2c = parseFloat((document.getElementById('gadzet2-cena')||{}).value)||0;
+  const g2s = parseInt((document.getElementById('gadzet2-szt')||{}).value)||0;
+  const gadzety = g1c * (g1s>0 ? g1s : nOs) + g2c * (g2s>0 ? g2s : nOs);
+  const ksiegowa = parseFloat(document.getElementById('ksiegowa').value)||55;
+
+  const kosztNetto = transport + lotKoszt + nocleg + pilotKoszt + sluchKoszt + wyzywienieKoszt + atrakcjeKoszt + uslugiKoszt + ubezp + gadzety + ksiegowa;
+  const marzaTyp = (document.getElementById('marza-typ')||{}).value || 'procent';
+  let marzaProc = 0, marza = 0;
+  if(marzaTyp === 'kwota') {
+    marza = parseFloat(document.getElementById('marza-kwota').value)||0;
+    marzaProc = kosztNetto > 0 ? Math.round(marza/kosztNetto*1000)/10 : 0;
+  } else {
+    marzaProc = parseFloat(document.getElementById('marza').value)||10;
+    marza = kosztNetto * (marzaProc/100);
+  }
+  // Podział kraj/zagranica (auto: zagranica = koszty w EUR). VAT marżowy 23% liczony
+  // TYLKO od krajowej części marży; część zagraniczna VAT = 0 (jak w rozliczeniu).
+  const kosztZagr = Math.max(0, Math.min(zagr, kosztNetto));
+  const kosztKraj = kosztNetto - kosztZagr;
+  const udzialKraj = kosztNetto > 0 ? (kosztKraj / kosztNetto) : 1;
+  const marzaKraj = marza * udzialKraj;
+  const vatWlaczony = document.getElementById('vat-wlaczony') ? document.getElementById('vat-wlaczony').checked : true;
+  const vat = vatWlaczony ? marzaKraj * 0.23 : 0;
+  const kosztBezTFG = kosztNetto + marza + vat;
+  // TFG i TFP = składka × osoby na UMOWIE (uczniowie + opiekunowie; bez pilota, kierowcy, przewodnika)
+  const tfgJed = parseFloat(document.getElementById('tfg').value)||30;
+  const tfpJed = parseFloat((document.getElementById('tfp')||{}).value)||0;
+  const tfgOsCount = nOs + opiek;
+  const tfgTotal = tfgJed * tfgOsCount;
+  const tfpTotal = tfpJed * tfgOsCount;
+  // KOREKTA CENY (ręczna, zł/os — do zaokrąglenia; może być ujemna)
+  const korektaOs = parseFloat((document.getElementById('korekta-os')||{}).value)||0;
+  const korektaTotal = korektaOs * nOs;
+  const total = kosztBezTFG + tfgTotal + tfpTotal + korektaTotal;
+  const cenaOs = total / nOs;
+
+  return {
+    transport, lotKoszt, nocleg, noclegBaza, taksaKoszt, pilotKoszt, sluchKoszt, wyzywienieKoszt,
+    atrakcjeKoszt, uslugiKoszt, ubezp, ubezpKraj, ubezpZagr, gadzety, ksiegowa,
+    kosztNetto, kosztKraj, kosztZagr, udzialKraj, marza, marzaKraj, marzaProc, vat, vatWlaczony,
+    tfgTotal, tfgJed, tfpTotal, tfpJed, tfgOsCount, kierowca2, korektaOs, korektaTotal, opiek, pilotOs,
+    total, cenaOs, kurs, dni, allOs, nOs
+  };
+}
+
+function calc() {
+  syncAuto();
+  const nOs = parseInt(document.getElementById('uczestnicy').value)||1;
+  const res = calcTotal(nOs);
+  const fmt = (n) => Math.round(n).toLocaleString('pl-PL') + ' zł';
+
+  document.getElementById('uc-label').textContent = nOs;
+  document.getElementById('cena-os').textContent = fmt(res.cenaOs);
+  document.getElementById('zaliczka-display').textContent = fmt(parseFloat(document.getElementById('zaliczka').value)||100);
+
+  // Breakdown
+  const bd = document.getElementById('result-breakdown');
+  bd.innerHTML = `
+    <div class="cost-line"><span class="cost-name">🚌 Transport autokar</span><span class="cost-val">${fmt(res.transport)}</span></div>
+    ${res.lotKoszt>0?`<div class="cost-line"><span class="cost-name">✈️ Transport lotniczy</span><span class="cost-val">${fmt(res.lotKoszt)}</span></div>`:''}
+    ${document.getElementById('ma-nocleg').checked ? `<div class="cost-line"><span class="cost-name">🏨 Nocleg</span><span class="cost-val">${fmt(res.nocleg)}</span></div>` : ''}
+    <div class="cost-line"><span class="cost-name">🎤 Pilot/przewodnik</span><span class="cost-val">${fmt(res.pilotKoszt)}</span></div>
+    ${res.sluchKoszt>0?`<div class="cost-line"><span class="cost-name">🎧 Słuchawki</span><span class="cost-val">${fmt(res.sluchKoszt)}</span></div>`:''}
+    ${res.wyzywienieKoszt>0?`<div class="cost-line"><span class="cost-name">🍽️ Wyżywienie</span><span class="cost-val">${fmt(res.wyzywienieKoszt)}</span></div>`:''}
+    ${attractions.length ? `<div class="cost-line"><span class="cost-name">🎭 Atrakcje (${attractions.length})</span><span class="cost-val">${fmt(res.atrakcjeKoszt)}</span></div>` : ''}
+    ${(res.uslugiKoszt>0) ? `<div class="cost-line"><span class="cost-name">🧾 Usługi zewnętrzne (${uslugi.length})</span><span class="cost-val">${fmt(res.uslugiKoszt)}</span></div>` : ''}
+    <div class="cost-line"><span class="cost-name">🛡️ Ubezpieczenie</span><span class="cost-val">${fmt(res.ubezp)}</span></div>
+    <div class="cost-line"><span class="cost-name">🎁 Gadżety + koszty stałe</span><span class="cost-val">${fmt(res.gadzety + res.ksiegowa)}</span></div>
+    <div class="cost-line subtotal"><span class="cost-name">Koszty netto</span><span class="cost-val">${fmt(res.kosztNetto)}</span></div>
+    <div class="cost-line"><span class="cost-name">📈 Marża (${res.marzaProc}%)</span><span class="cost-val">${fmt(res.marza)}</span></div>
+    ${res.vatWlaczony ? `<div class="cost-line"><span class="cost-name">🧾 VAT 23% od marży${res.kosztZagr>0?' (tylko kraj)':''}</span><span class="cost-val">${fmt(res.vat)}</span></div>` : ''}
+    ${res.kosztZagr>0?`<div class="cost-line"><span class="cost-name" style="font-size:11px;color:var(--gray)">↳ w tym koszty zagraniczne (EUR, VAT 0%)</span><span class="cost-val" style="font-size:11px;color:var(--gray)">${fmt(res.kosztZagr)}</span></div>`:''}
+    <div class="cost-line"><span class="cost-name">🏛️ TFG (${res.tfgJed} zł × ${res.tfgOsCount} os: uczniowie+opiekun)</span><span class="cost-val">${fmt(res.tfgTotal)}</span></div>
+    ${res.tfpJed>0?`<div class="cost-line"><span class="cost-name">🏛️ TFP (${res.tfpJed} zł × ${res.tfgOsCount} os: uczniowie+opiekun)</span><span class="cost-val">${fmt(res.tfpTotal)}</span></div>`:''}
+    ${res.korektaOs!=0?`<div class="cost-line"><span class="cost-name">✏️ Korekta ceny (${res.korektaOs>0?'+':''}${res.korektaOs} zł/os × ${res.nOs})</span><span class="cost-val">${res.korektaTotal>0?'+':''}${fmt(res.korektaTotal)}</span></div>`:''}
+    <div class="cost-line subtotal"><span class="cost-name" style="color:var(--gold-light);font-weight:600">RAZEM</span><span class="cost-val" style="color:var(--gold-light)">${fmt(res.total)}</span></div>
+  `;
+
+  // Warianty
+  const vDiv = document.getElementById('result-variants');
+  const warianty = [-3, -2, -1, 0, 2, 5].map(d => ({n: nOs+d, res: calcTotal(nOs+d)})).filter(x=>x.n>0);
+  vDiv.innerHTML = '<div style="font-size:11px;color:rgba(247,243,237,0.45);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.6px">Przy różnej liczbie uczestników</div>' +
+    warianty.map(x=>`
+      <div class="variant-row" ${x.n===nOs?'style="background:rgba(201,148,58,0.18)"':''}>
+        <span class="variant-label">${x.n === nOs ? '▶ '+x.n+' os' : x.n+' os'}</span>
+        <span class="variant-price">${Math.round(x.res.cenaOs).toLocaleString('pl-PL')} zł</span>
+      </div>
+    `).join('');
+}
+
+// ====== CANVA MODAL ======
+let canvaPages = {};
+let currentCanvaPage = 1;
+
+function fmtDate(d) {
+  if(!d) return '';
+  const [y,m,day] = d.split('-');
+  const months = ['','STYCZNIA','LUTEGO','MARCA','KWIETNIA','MAJA','CZERWCA','LIPCA','SIERPNIA','WRZEŚNIA','PAŹDZIERNIKA','LISTOPADA','GRUDNIA'];
+  return `${parseInt(day)} ${months[parseInt(m)]} ${y}`;
+}
+
+function getCanvaTemplateUrl(kierunek) {
+  // Jeden uniwersalny szablon DARTUR dla wszystkich kierunków
+  return 'https://www.canva.com/design?create=true&template=EAHLfkCFS5o';
+}
+
+function getCanvaTemplateName(kierunek) {
+  return 'Oferta grupowa DARTUR';
+}
+
+// Generuj CSV do Canva Bulk Create
+function pobierzCSVdoCanvy() {
+  const nOs = parseInt(document.getElementById('uczestnicy').value)||1;
+  const opiek = parseInt(document.getElementById('opiekunowie').value)||0;
+  const res = calcTotal(nOs);
+  const kierunek = document.getElementById('kierunek').value === 'inne'
+    ? document.getElementById('kierunek-custom').value
+    : document.getElementById('kierunek').value;
+  const od = document.getElementById('data-od').value;
+  const ddo = document.getElementById('data-do').value;
+  const dni = getDni();
+  const fmt = (n) => Math.round(n).toLocaleString('pl-PL');
+  const wazna = document.getElementById('oferta-wazna').value;
+  const zaliczka = parseFloat(document.getElementById('zaliczka').value)||100;
+  const klient = document.getElementById('klient').value;
+  const maNocleg = document.getElementById('ma-nocleg').checked;
+  const nNoc = maNocleg ? (parseInt(document.getElementById('noclegi-ile').value)||1) : 0;
+  const atrList = attractions.map(a=>`${a.nazwa}`).join(', ');
+
+  // Buduj program dni
+  const dzien1nazwa = `Dzień 1 – ${kierunek.split(/[-–]/)[0].trim()}`;
+  const dzien1opis = atrList ? `Zwiedzanie: ${atrList}` : 'Zwiedzanie według programu wycieczki.';
+  const dzien2nazwa = dni >= 2 ? `Dzień 2 – Zwiedzanie` : '';
+  const dzien2opis = dni >= 2 ? 'Kontynuacja programu wycieczki.' : '';
+  const dzien3nazwa = dni >= 3 ? `Dzień 3 – Powrót` : '';
+  const dzien3opis = dni >= 3 ? 'Zwiedzanie i powrót do miejsca zamieszkania.' : '';
+
+  const wCenie = ['Transport autokarem', 'Parkingi i opłaty drogowe', 'Opieka pilota',
+    maNocleg ? `Noclegi (${nNoc} noce)` : null,
+    'Bilety wstępu', 'Ubezpieczenie', 'Składki TFG i TFP', 'Podatek VAT'
+  ].filter(Boolean).join('\n');
+
+  const infoPrekt = `Transport: autokar\nNocleg: ${maNocleg ? 'hotel w cenie' : 'bez noclegu'}\nWyżywienie: ${maNocleg ? `${nNoc}x śniadanie, ${nNoc}x obiadokolacja` : 'obiad podczas trasy'}\nCzas trwania: ${dni} ${dni===1?'dzień':'dni'}`;
+
+  const cenaPodsum = `CENA ${fmt(res.cenaOs)} ZŁ/OS PRZY GRUPIE\nMIN ${nOs}${opiek>0?' I '+opiek+' OPIEKUNÓW':''}`;
+
+  // Escapowanie dla CSV
+  const esc = (v) => '"' + String(v||'').replace(/"/g,'""') + '"';
+
+  const headers = [
+    'nazwa_trasy','slogan','liczba_dni','liczba_osob','cena','opis_wycieczki',
+    'dzien1_nazwa','dzien1_opis','dzien2_nazwa','dzien2_opis','dzien3_nazwa','dzien3_opis',
+    'cena_podsumowanie','program_zawiera','info_praktyczne'
+  ];
+
+  const values = [
+    kierunek.toUpperCase(),
+    `Wyjątkowe miejsca. Niezapomniane wspomnienia.`,
+    `${dni} ${dni===1?'dzień':'dni'}`,
+    `Grupa: min. ${nOs} osób`,
+    fmt(res.cenaOs),
+    `Zapraszamy na wycieczkę ${kierunek}. ${atrList ? 'W programie: '+atrList+'.' : ''} Starannie zaplanowany program, komfortowy transport oraz opieka doświadczonego pilota.`,
+    dzien1nazwa, dzien1opis,
+    dzien2nazwa, dzien2opis,
+    dzien3nazwa, dzien3opis,
+    cenaPodsum,
+    wCenie,
+    infoPrekt
+  ];
+
+  const csv = headers.join(',') + '\n' + values.map(esc).join(',');
+
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `oferta-canva-${kierunek.replace(/[^a-zA-ZąęółśźćńĄĘÓŁŚŹĆŃ0-9]/g,'-').toLowerCase()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  // Pokaż instrukcję
+  alert('✅ Plik CSV pobrany!\n\n📋 Jak użyć:\n1. Otwórz szablon w Canvie (przycisk "Generuj ofertę")\n2. Kliknij: Aplikacje → Bulk Create\n3. Wgraj pobrany plik CSV\n4. Canva automatycznie wypełni szablon!');
+}
+
+function openCanvaModal() {
+  const nOs = parseInt(document.getElementById('uczestnicy').value)||1;
+  const opiek = parseInt(document.getElementById('opiekunowie').value)||0;
+  const res = calcTotal(nOs);
+  const kierunek = document.getElementById('kierunek').value === 'inne'
+    ? document.getElementById('kierunek-custom').value
+    : document.getElementById('kierunek').value;
+  const od = document.getElementById('data-od').value;
+  const ddo = document.getElementById('data-do').value;
+  const dni = getDni();
+  const fmt = (n) => Math.round(n).toLocaleString('pl-PL');
+  const wazna = document.getElementById('oferta-wazna').value;
+  const zaliczka = parseFloat(document.getElementById('zaliczka').value)||100;
+  const klient = document.getElementById('klient').value;
+  const atrList = attractions.map(a=>`• ${a.nazwa}`).join('\n');
+  const maNocleg = document.getElementById('ma-nocleg').checked;
+  const nNoc = maNocleg ? (parseInt(document.getElementById('noclegi-ile').value)||1) : 0;
+
+  // Warianty cen
+  const wariantyText = [-2,-1,0,2,5]
+    .map(d => nOs+d)
+    .filter(n => n > 0)
+    .map(n => `${n} os → ${Math.round(calcTotal(n).cenaOs).toLocaleString('pl-PL')} zł/os`)
+    .join('\n');
+
+  // W cenie lista
+  const wCenie = [
+    'Transport',
+    'Parkingi i opłaty drogowe',
+    'Opieka pilota',
+    maNocleg ? `Noclegi (${nNoc} ${nNoc===1?'noc':'noce/nocy'})` : null,
+    'Bilety wstępu na atrakcje w programie',
+    'Ubezpieczenie',
+    'Składki TFG i TFP',
+    'Podatek VAT'
+  ].filter(Boolean).map(x=>`• ${x}`).join('\n');
+
+  // STRONA 1 — OKŁADKA
+  // Buduj pola z osobnymi przyciskami kopiowania
+  function makeField(label, value) {
+    return { label, value };
+  }
+
+  canvaPages[1] = {
+    instrukcja: '👆 Kliknij element w Canvie → zaznacz tekst (Ctrl+A) → kliknij "Kopiuj" przy danej wartości → wklej (Ctrl+V). Font zostaje bez zmian!',
+    pola: [
+      makeField('Nazwa wycieczki', kierunek.toUpperCase()),
+      makeField('Liczba dni', `${dni} ${dni===1?'DZIEŃ':'DNI'}`),
+      makeField('Termin', `${fmtDate(od)} – ${fmtDate(ddo)}`),
+      makeField('Cena / os', `${fmt(res.cenaOs)} ZŁ/OS`),
+      makeField('Min. uczestników', `MIN. ${nOs} UCZESTNIKÓW${opiek>0?' + '+opiek+' OPIEKI GRATIS':''}`),
+      makeField('Oferta ważna do', fmtDate(wazna)),
+      makeField('Klient (notatka)', klient),
+    ]
+  };
+
+  canvaPages[2] = {
+    instrukcja: '👆 Kliknij element w Canvie → zaznacz tekst (Ctrl+A) → kliknij "Kopiuj" → wklej (Ctrl+V).',
+    pola: [
+      makeField('Atrakcje / program', atrList || '(dodaj atrakcje w kalkulatorze)'),
+      makeField('Wyżywienie', maNocleg ? `${nNoc}x śniadanie\n${nNoc}x obiadokolacja` : 'Obiad w trakcie wycieczki'),
+      makeField('Transport', 'Autokar turystyczny\nParkingi i opłaty drogowe w cenie'),
+    ]
+  };
+
+  canvaPages[3] = {
+    instrukcja: '👆 Kliknij element w Canvie → zaznacz tekst (Ctrl+A) → kliknij "Kopiuj" → wklej (Ctrl+V).',
+    pola: [
+      makeField('Cena główna', `CENA ${fmt(res.cenaOs)} ZŁ/OS`),
+      makeField('Liczba uczestników', `PRZY UDZIALE MIN. ${nOs} UCZESTNIKÓW${opiek>0?'\n+ '+opiek+' OPIEKI GRATIS':''}`),
+      makeField('Cena zawiera', wCenie.replace(/•/g,'').split('\n').map(x=>x.trim()).filter(Boolean).join('\n')),
+      makeField('Warianty cenowe', wariantyText),
+      makeField('Zaliczka', `${fmt(zaliczka)} zł/os`),
+      makeField('Oferta ważna do', fmtDate(wazna)),
+      makeField('Data wyceny', new Date().toLocaleDateString('pl-PL')),
+    ]
+  };
+
+  // Ustaw właściwy szablon Canva zależnie od kierunku
+  const templateUrl = getCanvaTemplateUrl(kierunek);
+  const templateName = getCanvaTemplateName(kierunek);
+  const linkEl = document.getElementById('canva-open-link');
+  if(linkEl) {
+    linkEl.href = templateUrl;
+    linkEl.textContent = `🎨 Otwórz szablon w Canvie`;
+  }
+
+  document.getElementById('canva-modal').classList.add('open');
+  showCanvaPage(1);
+}
+
+function showCanvaPage(n) {
+  currentCanvaPage = n;
+  [1,2,3].forEach(i => {
+    const tab = document.getElementById('tab-'+i);
+    if(tab) {
+      tab.style.background = i===n ? '#c9943a' : 'white';
+      tab.style.borderColor = i===n ? '#c9943a' : '#d6dae6';
+    }
+  });
+  const page = canvaPages[n];
+  if(!page) return;
+  document.getElementById('canva-instruction').textContent = page.instrukcja;
+
+  const container = document.getElementById('canva-fields');
+  container.innerHTML = '';
+  (page.pola || []).forEach((pole, idx) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'background:#f7f3ed; border-radius:8px; padding:10px 12px; border:1px solid #d6dae6';
+    div.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px">
+        <div style="flex:1">
+          <div style="font-size:10px; color:#8a8f9e; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; font-weight:600">${pole.label}</div>
+          <div id="field-val-${idx}" style="font-size:13px; color:#0f1e3c; font-weight:500; white-space:pre-wrap; line-height:1.5">${pole.value}</div>
+        </div>
+        <button onclick="copyField(${idx})" id="field-btn-${idx}"
+          style="background:#0f1e3c; color:#f0b84a; border:none; border-radius:7px; padding:7px 14px; font-family:Syne,sans-serif; font-weight:700; font-size:12px; cursor:pointer; white-space:nowrap; flex-shrink:0; margin-top:14px">
+          📋 Kopiuj
+        </button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+
+  // Zapamiętaj wartości do kopiowania
+  window._canvaFieldValues = (page.pola || []).map(p => p.value);
+}
+
+function copyField(idx) {
+  const val = (window._canvaFieldValues || [])[idx];
+  if(!val) return;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById('field-btn-'+idx);
+    if(btn) {
+      btn.textContent = '✅ Skopiowano!';
+      btn.style.background = '#2d7a4f';
+      setTimeout(() => {
+        btn.textContent = '📋 Kopiuj';
+        btn.style.background = '#0f1e3c';
+      }, 2000);
+    }
+  });
+}
+
+function closeCanvaModal() {
+  document.getElementById('canva-modal').classList.remove('open');
+}
+
+// ====== PRINT / COPY ======
+function printSummary() {
+  const nOs = parseInt(document.getElementById('uczestnicy').value)||1;
+  const opiek = parseInt(document.getElementById('opiekunowie').value)||0;
+  const res = calcTotal(nOs);
+  const kierunek = document.getElementById('kierunek').value === 'inne'
+    ? document.getElementById('kierunek-custom').value
+    : document.getElementById('kierunek').value;
+  const klient = document.getElementById('klient').value;
+  const od = document.getElementById('data-od').value;
+  const ddo = document.getElementById('data-do').value;
+  const wazna = document.getElementById('oferta-wazna').value;
+  const zaliczka = parseFloat(document.getElementById('zaliczka').value)||100;
+  const notatki = document.getElementById('notatki').value;
+  const maNocleg = document.getElementById('ma-nocleg').checked;
+  const nNoc = maNocleg ? (parseInt(document.getElementById('noclegi-ile').value)||1) : 0;
+  const kurs = parseFloat(document.getElementById('kurs-eur').value)||4.25;
+  const fmt = n => Math.round(n).toLocaleString('pl-PL') + ' zł';
+  const fmtN = n => Math.round(n).toLocaleString('pl-PL');
+
+  // Warianty cen
+  const warianty = [-3,-2,-1,0,2,5]
+    .map(d=>nOs+d).filter(n=>n>0)
+    .map(n=>`<tr ${n===nOs?'style="background:#f0f7ff;font-weight:600"':''}><td>${n} osób</td><td style="text-align:right">${fmtN(calcTotal(n).cenaOs)} zł/os</td></tr>`)
+    .join('');
+
+  // Atrakcje
+  const atrRows = attractions.length
+    ? attractions.map(a=>`<tr><td>${a.nazwa}</td><td style="text-align:right">${a.cena} ${a.waluta}/os${a.waluta==='EUR'?' (≈'+fmtN(a.cena*kurs)+' zł)':''}</td></tr>`).join('')
+    : '<tr><td colspan="2" style="color:#999">Brak atrakcji</td></tr>';
+
+  // Pilot stawki
+  const pilotRows = pilotDni.map((p,i)=>`Dzień ${i+1}: ${p.stawka} zł`).join(' · ');
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html>
+<html lang="pl"><head>
+<meta charset="UTF-8">
+<title>Kalkulacja — ${kierunek} — ${klient}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', Arial, sans-serif; color: #1a1a2e; background: white; font-size: 13px; }
+  .page { max-width: 780px; margin: 0 auto; padding: 32px 36px; }
+
+  /* NAGŁÓWEK */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px solid #0f1e3c; }
+  .logo-area { }
+  .logo-name { font-size: 22px; font-weight: 700; color: #0f1e3c; letter-spacing: 2px; }
+  .logo-sub { font-size: 10px; color: #888; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+  .header-right { text-align: right; }
+  .doc-title { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+  .doc-date { font-size: 12px; color: #444; margin-top: 3px; }
+
+  /* HERO */
+  .hero { background: #0f1e3c; color: white; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+  .hero-left .trip-name { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .hero-left .trip-sub { font-size: 12px; color: rgba(255,255,255,0.6); }
+  .hero-right { text-align: right; }
+  .hero-price { font-size: 36px; font-weight: 700; color: #f0b84a; line-height: 1; }
+  .hero-price-sub { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+
+  /* INFO BAR */
+  .info-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+  .info-item { background: #f7f8fc; border-radius: 8px; padding: 10px 12px; }
+  .info-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+  .info-value { font-size: 13px; font-weight: 600; color: #0f1e3c; }
+
+  /* SEKCJE */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .section { margin-bottom: 16px; }
+  .section-title { font-size: 10px; font-weight: 700; color: #0f1e3c; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #0f1e3c; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 5px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px; }
+  td:last-child { text-align: right; }
+  tr.subtotal td { font-weight: 600; background: #f7f8fc; padding: 6px 4px; border-bottom: none; }
+  tr.total-row td { font-weight: 700; font-size: 14px; color: #0f1e3c; border-top: 2px solid #0f1e3c; border-bottom: none; padding-top: 8px; }
+  tr.highlight td { background: #fff8e6; font-weight: 600; }
+
+  /* WARIANTY */
+  .warianty-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+  .wariant-item { background: #f7f8fc; border-radius: 6px; padding: 7px 10px; text-align: center; }
+  .wariant-item.active { background: #0f1e3c; color: white; }
+  .wariant-n { font-size: 11px; color: #888; }
+  .wariant-item.active .wariant-n { color: rgba(255,255,255,0.6); }
+  .wariant-c { font-size: 14px; font-weight: 700; }
+
+  /* ZALICZKA BOX */
+  .zaliczka-box { background: #fff8e6; border: 2px solid #f0b84a; border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .zaliczka-label { font-size: 12px; color: #666; }
+  .zaliczka-val { font-size: 18px; font-weight: 700; color: #0f1e3c; }
+
+  /* WAZNOSC */
+  .waznosc { background: #fef2f2; border-left: 4px solid #e53e3e; padding: 8px 12px; border-radius: 0 6px 6px 0; font-size: 12px; color: #c53030; margin-bottom: 16px; }
+
+  /* NOTATKI */
+  .notatki-box { background: #f7f8fc; border-radius: 8px; padding: 12px; font-size: 11px; color: #555; line-height: 1.5; margin-bottom: 16px; }
+
+  /* FOOTER */
+  .footer { border-top: 1px solid #eee; padding-top: 12px; display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 20px; }
+  .footer strong { color: #666; }
+
+  /* PODPIS */
+  .podpis { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px; }
+  .podpis-item { border-top: 1px solid #ccc; padding-top: 6px; font-size: 10px; color: #888; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none; }
+    .page { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- NAGŁÓWEK -->
+  <div class="header">
+    <div class="logo-area">
+      <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4NCjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+DQo8IS0tIENyZWF0b3I6IENvcmVsRFJBVyAyMDE3IC0tPg0KPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSIyMTBtbSIgaGVpZ2h0PSIyOTdtbSIgdmVyc2lvbj0iMS4xIiBzdHlsZT0ic2hhcGUtcmVuZGVyaW5nOmdlb21ldHJpY1ByZWNpc2lvbjsgdGV4dC1yZW5kZXJpbmc6Z2VvbWV0cmljUHJlY2lzaW9uOyBpbWFnZS1yZW5kZXJpbmc6b3B0aW1pemVRdWFsaXR5OyBmaWxsLXJ1bGU6ZXZlbm9kZDsgY2xpcC1ydWxlOmV2ZW5vZGQiDQp2aWV3Qm94PSIwIDAgMjEwMDAgMjk3MDAiDQogeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiPg0KIDxkZWZzPg0KICA8c3R5bGUgdHlwZT0idGV4dC9jc3MiPg0KICAgPCFbQ0RBVEFbDQogICAgLmZpbDEge2ZpbGw6IzI5MTY2Rn0NCiAgICAuZmlsMCB7ZmlsbDojMjkxNjZGO2ZpbGwtcnVsZTpub256ZXJvfQ0KICAgXV0+DQogIDwvc3R5bGU+DQogPC9kZWZzPg0KIDxnIGlkPSJXYXJzdHdhX3gwMDIwXzEiPg0KICA8bWV0YWRhdGEgaWQ9IkNvcmVsQ29ycElEXzBDb3JlbC1MYXllciIvPg0KICA8cGF0aCBjbGFzcz0iZmlsMCIgZD0iTTc0MjQgOTAyNmwwIC01MjYgMTA3IDAgMCA0MzYgMjY2IDAgMCA5MCAtMzczIDB6bTEwMTcgLTUzMGwxMDcgMCAwIDI4N2MwLDQ2IDEsNzUgNCw4OSA1LDIyIDE1LDM5IDMyLDUyIDE3LDEzIDQxLDIwIDcwLDIwIDMwLDAgNTMsLTYgNjgsLTE5IDE1LC0xMiAyNCwtMjggMjgsLTQ2IDMsLTE4IDUsLTQ4IDUsLTkwbDAgLTI5NCAxMDcgMCAwIDI3OWMwLDY0IC0zLDEwOSAtOSwxMzUgLTYsMjYgLTE2LDQ5IC0zMiw2NyAtMTUsMTggLTM2LDMyIC02Miw0MyAtMjYsMTEgLTYwLDE2IC0xMDIsMTYgLTUxLDAgLTg5LC02IC0xMTUsLTE4IC0yNiwtMTIgLTQ3LC0yNyAtNjIsLTQ2IC0xNSwtMTkgLTI1LC0zOCAtMzAsLTU5IC03LC0zMCAtMTEsLTc1IC0xMSwtMTM1bDAgLTI4M3ptMTEwMiAwbDIxMiAwYzQyLDAgNzMsMiA5NCw1IDIxLDQgMzksMTEgNTUsMjIgMTYsMTEgMzAsMjYgNDEsNDQgMTEsMTggMTYsMzkgMTYsNjIgMCwyNSAtNyw0OCAtMjAsNjggLTEzLDIxIC0zMSwzNiAtNTQsNDcgMzIsMTAgNTcsMjYgNzQsNDggMTcsMjMgMjYsNDkgMjYsODAgMCwyNCAtNiw0OCAtMTcsNzEgLTExLDIzIC0yNyw0MSAtNDYsNTUgLTE5LDE0IC00MywyMiAtNzIsMjUgLTE4LDIgLTYxLDMgLTEyOSw0bC0xODEgMCAwIC01MzB6bTEwNyA4OGwwIDEyMiA3MCAwYzQyLDAgNjgsLTEgNzgsLTIgMTgsLTIgMzMsLTggNDMsLTE5IDExLC0xMSAxNiwtMjQgMTYsLTQxIDAsLTE2IC01LC0zMCAtMTQsLTQwIC05LC0xMCAtMjIsLTE2IC00MCwtMTkgLTExLC0xIC00MSwtMiAtOTEsLTJsLTYxIDB6bTAgMjEwbDAgMTQyIDk5IDBjMzksMCA2MywtMSA3MywtMyAxNiwtMyAyOSwtMTAgMzksLTIxIDEwLC0xMSAxNSwtMjYgMTUsLTQ1IDAsLTE2IC00LC0zMCAtMTIsLTQxIC04LC0xMSAtMTksLTE5IC0zMywtMjQgLTE1LC01IC00NiwtOCAtOTUsLThsLTg3IDB6bTk5OCAyMzJsMCAtNTI2IDEwNyAwIDAgNDM2IDI2NiAwIDAgOTAgLTM3MyAwem0xMDEzIDBsMCAtNTMwIDEwNyAwIDAgNTMwIC0xMDcgMHptNzc3IDBsMCAtNTMwIDEwNCAwIDIxOCAzNTUgMCAtMzU1IDk5IDAgMCA1MzAgLTEwNyAwIC0yMTUgLTM0OSAwIDM0OSAtOTkgMHoiLz4NCiA8L2c+DQogPGcgaWQ9IldhcnN0d2FfeDAwMjBfMV8wIj4NCiAgPG1ldGFkYXRhIGlkPSJDb3JlbENvcnBJRF8xQ29yZWwtTGF5ZXIiLz4NCiAgPHBhdGggY2xhc3M9ImZpbDEiIGQ9Ik00OTY5IDQ4NzZjMjYsLTE0OCAxMDksLTM0NCAxNTksLTQ4NGwxNzYgLTQ1OGM1MCw1NiA4MCwxNTggMTA2LDIyNiA2NSwxNjcgMjQ3LDU5MSAyNjYsNzExbC03MDcgNXptLTEwMDcgMjUzM2M0NCwwIDc5LDM1IDc5LDc5IDAsNDQgLTM1LDc5IC03OSw3OSAtNDQsMCAtNzksLTM1IC03OSwtNzkgMCwtNDQgMzUsLTc5IDc5LC03OXptMTIyNzcgLTVjNDQsMCA3OSwzNSA3OSw3OSAwLDQ0IC0zNSw3OSAtNzksNzkgLTQ0LDAgLTc5LC0zNSAtNzksLTc5IDAsLTQ0IDM1LC03OSA3OSwtNzl6bS04ODkgMzY0bDAgLTIzMCAtMjAwIC0zMTYgMTI5IDAgMTI5IDIxNiAxMjYgLTIxNiAxMjcgMCAtMjAwIDMxNyAwIDIyOSAtMTExIDB6bS0xMDQ0IDBsMCAtOTkgMjg4IC0zNTUgLTI1NSAwIDAgLTkyIDQwMCAwIDAgODUgLTI5OSAzNjggMzEwIDAgMCA5MiAtNDQ0IDB6bTE3OCAtNTk2bDAgLTk5IDEwMyAwIDAgOTkgLTEwMyAwem0tMTEzMyAzMjZjMCwtNTYgOCwtMTAyIDI1LC0xNDAgMTIsLTI4IDI5LC01MyA1MSwtNzUgMjEsLTIyIDQ1LC0zOSA3MSwtNDkgMzQsLTE0IDczLC0yMiAxMTgsLTIyIDgxLDAgMTQ1LDI1IDE5Myw3NSA0OCw1MCA3MiwxMjAgNzIsMjA5IDAsODggLTI0LDE1NyAtNzIsMjA3IC00OCw1MCAtMTEyLDc1IC0xOTIsNzUgLTgxLDAgLTE0NiwtMjUgLTE5NCwtNzQgLTQ4LC01MCAtNzIsLTExOCAtNzIsLTIwNXptMTE0IC00YzAsNjIgMTQsMTA5IDQzLDE0MSAyOSwzMiA2NSw0OCAxMDksNDggNDQsMCA4MCwtMTYgMTA5LC00OCAyOCwtMzIgNDIsLTc5IDQyLC0xNDMgMCwtNjMgLTE0LC0xMDkgLTQxLC0xNDAgLTI3LC0zMSAtNjQsLTQ2IC0xMTAsLTQ2IC00NiwwIC04MiwxNiAtMTEwLDQ3IC0yOCwzMSAtNDIsNzggLTQyLDE0MXptODUgLTMyMmw1MiAtMTExIDExNyAwIC0xMDMgMTExIC02NiAwem0tMTExNCA1OTZsMCAtNTQ2IDIzMiAwYzU4LDAgMTAxLDUgMTI3LDE1IDI3LDEwIDQ4LDI3IDY0LDUyIDE2LDI1IDI0LDU0IDI0LDg2IDAsNDEgLTEyLDc1IC0zNiwxMDIgLTI0LDI3IC02MCw0MyAtMTA4LDUwIDI0LDE0IDQzLDI5IDU5LDQ2IDE2LDE3IDM2LDQ2IDYzLDg5bDY3IDEwNyAtMTMyIDAgLTc5IC0xMTljLTI4LC00MiAtNDgsLTY5IC01OCwtODAgLTEwLC0xMSAtMjEsLTE5IC0zMywtMjMgLTEyLC00IC0zMCwtNiAtNTYsLTZsLTIyIDAgMCAyMjggLTExMSAwem0xMTEgLTMxNWw4MiAwYzUzLDAgODYsLTIgOTksLTcgMTMsLTQgMjQsLTEyIDMxLC0yMyA4LC0xMSAxMSwtMjUgMTEsLTQxIDAsLTE4IC01LC0zMyAtMTUsLTQ1IC0xMCwtMTEgLTI0LC0xOCAtNDEsLTIxIC05LC0xIC0zNiwtMiAtODAsLTJsLTg2IDAgMCAxMzl6bS0xMDQ4IC0yMzFsMjAxIDBjNDUsMCA4MCwzIDEwNCwxMCAzMiw5IDU5LDI2IDgyLDUwIDIzLDI0IDQwLDUzIDUyLDg4IDEyLDM1IDE4LDc4IDE4LDEyOSAwLDQ1IC02LDg0IC0xNywxMTYgLTE0LDQwIC0zMyw3MiAtNTgsOTYgLTE5LDE5IC00NSwzMyAtNzcsNDQgLTI0LDggLTU3LDEyIC05NywxMmwtMjA3IDAgMCAtNTQ2em0xMTEgOTJsMCAzNjEgODIgMGMzMSwwIDUzLC0yIDY2LC01IDE4LC00IDMzLC0xMiA0NCwtMjMgMTIsLTExIDIxLC0yOCAyOSwtNTMgOCwtMjQgMTEsLTU4IDExLC0xMDAgMCwtNDIgLTQsLTc0IC0xMSwtOTcgLTcsLTIzIC0xOCwtNDAgLTMxLC01MyAtMTMsLTEzIC0zMCwtMjEgLTUxLC0yNiAtMTUsLTMgLTQ1LC01IC05MCwtNWwtNDkgMHptLTExMTMgMTg0YzAsLTU2IDgsLTEwMiAyNSwtMTQwIDEyLC0yOCAyOSwtNTMgNTEsLTc1IDIxLC0yMiA0NSwtMzkgNzEsLTQ5IDM0LC0xNCA3MywtMjIgMTE4LC0yMiA4MSwwIDE0NSwyNSAxOTMsNzUgNDgsNTAgNzIsMTIwIDcyLDIwOSAwLDg4IC0yNCwxNTcgLTcyLDIwNyAtNDgsNTAgLTExMiw3NSAtMTkyLDc1IC04MSwwIC0xNDYsLTI1IC0xOTQsLTc0IC00OCwtNTAgLTcyLC0xMTggLTcyLC0yMDV6bTExNCAtNGMwLDYyIDE0LDEwOSA0MywxNDEgMjksMzIgNjUsNDggMTA5LDQ4IDQ0LDAgODAsLTE2IDEwOSwtNDggMjgsLTMyIDQyLC03OSA0MiwtMTQzIDAsLTYzIC0xNCwtMTA5IC00MSwtMTQwIC0yNywtMzEgLTY0LC00NiAtMTEwLC00NiAtNDYsMCAtODIsMTYgLTExMCw0NyAtMjgsMzEgLTQyLDc4IC00MiwxNDF6bS05ODYgMjczbDAgLTU0NiAxNzcgMGM2NywwIDExMSwzIDEzMSw4IDMxLDggNTcsMjYgNzksNTQgMjEsMjcgMzIsNjMgMzIsMTA2IDAsMzQgLTYsNjIgLTE4LDg1IC0xMiwyMyAtMjgsNDEgLTQ2LDU0IC0xOSwxMyAtMzgsMjIgLTU3LDI2IC0yNiw1IC02NCw4IC0xMTQsOGwtNzIgMCAwIDIwNiAtMTExIDB6bTExMSAtNDU0bDAgMTU2IDYwIDBjNDMsMCA3MiwtMyA4NywtOSAxNSwtNiAyNiwtMTUgMzQsLTI3IDgsLTEyIDEyLC0yNiAxMiwtNDMgMCwtMjAgLTYsLTM2IC0xNywtNDkgLTEyLC0xMyAtMjYsLTIxIC00NCwtMjQgLTEzLC0yIC0zOSwtNCAtNzksLTRsLTUzIDB6bS0xNzM0IDE4NGMwLC01NiA4LC0xMDIgMjUsLTE0MCAxMiwtMjggMjksLTUzIDUxLC03NSAyMSwtMjIgNDUsLTM5IDcxLC00OSAzNCwtMTQgNzMsLTIyIDExOCwtMjIgODEsMCAxNDUsMjUgMTkzLDc1IDQ4LDUwIDcyLDEyMCA3MiwyMDkgMCw4OCAtMjQsMTU3IC03MiwyMDcgLTQ4LDUwIC0xMTIsNzUgLTE5Miw3NSAtODEsMCAtMTQ2LC0yNSAtMTk0LC03NCAtNDgsLTUwIC03MiwtMTE4IC03MiwtMjA1em0xMTQgLTRjMCw2MiAxNCwxMDkgNDMsMTQxIDI5LDMyIDY1LDQ4IDEwOSw0OCA0NCwwIDgwLC0xNiAxMDksLTQ4IDI4LC0zMiA0MiwtNzkgNDIsLTE0MyAwLC02MyAtMTQsLTEwOSAtNDEsLTE0MCAtMjcsLTMxIC02NCwtNDYgLTExMCwtNDYgLTQ2LDAgLTgyLDE2IC0xMTAsNDcgLTI4LDMxIC00Miw3OCAtNDIsMTQxem0tMTAyOCAyNzNsMCAtNTQ2IDIzMiAwYzU4LDAgMTAxLDUgMTI3LDE1IDI3LDEwIDQ4LDI3IDY0LDUyIDE2LDI1IDI0LDU0IDI0LDg2IDAsNDEgLTEyLDc1IC0zNiwxMDIgLTI0LDI3IC02MCw0MyAtMTA4LDUwIDI0LDE0IDQzLDI5IDU5LDQ2IDE2LDE3IDM2LDQ2IDYzLDg5bDY3IDEwNyAtMTMyIDAgLTc5IC0xMTljLTI4LC00MiAtNDgsLTY5IC01OCwtODAgLTEwLC0xMSAtMjEsLTE5IC0zMywtMjMgLTEyLC00IC0zMCwtNiAtNTYsLTZsLTIyIDAgMCAyMjggLTExMSAwem0xMTEgLTMxNWw4MiAwYzUzLDAgODYsLTIgOTksLTcgMTMsLTQgMjQsLTEyIDMxLC0yMyA4LC0xMSAxMSwtMjUgMTEsLTQxIDAsLTE4IC01LC0zMyAtMTUsLTQ1IC0xMCwtMTEgLTI0LC0xOCAtNDEsLTIxIC05LC0xIC0zNiwtMiAtODAsLTJsLTg2IDAgMCAxMzl6bS0xMDQ4IC0yMzFsMTExIDAgMCAyOTZjMCw0NyAxLDc3IDQsOTEgNSwyMiAxNiw0MCAzMyw1NCAxOCwxNCA0MiwyMCA3MiwyMCAzMSwwIDU0LC02IDcwLC0xOSAxNiwtMTMgMjUsLTI4IDI4LC00NyAzLC0xOSA1LC01MCA1LC05M2wwIC0zMDIgMTExIDAgMCAyODdjMCw2NiAtMywxMTIgLTksMTM5IC02LDI3IC0xNyw1MCAtMzMsNjkgLTE2LDE5IC0zNywzMyAtNjQsNDQgLTI3LDExIC02MiwxNyAtMTA1LDE3IC01MiwwIC05MSwtNiAtMTE4LC0xOCAtMjcsLTEyIC00OCwtMjggLTY0LC00NyAtMTYsLTE5IC0yNiwtMzkgLTMxLC02MSAtNywtMzEgLTExLC03OCAtMTEsLTEzOWwwIC0yOTJ6bS02MDMgNTQ2bDAgLTU0NiAxMTEgMCAwIDU0NiAtMTExIDB6bS05MzQgLTU0NmwyMTggMGM0MywwIDc1LDIgOTcsNSAyMSw0IDQwLDExIDU3LDIzIDE3LDExIDMxLDI3IDQyLDQ1IDExLDE5IDE3LDQwIDE3LDY0IDAsMjUgLTcsNDkgLTIxLDcwIC0xNCwyMSAtMzIsMzcgLTU2LDQ4IDMzLDEwIDU5LDI2IDc3LDUwIDE4LDIzIDI3LDUxIDI3LDgyIDAsMjUgLTYsNDkgLTE3LDczIC0xMiwyNCAtMjcsNDIgLTQ3LDU2IC0yMCwxNCAtNDUsMjMgLTc0LDI2IC0xOCwyIC02MywzIC0xMzMsNGwtMTg2IDAgMCAtNTQ2em0xMTEgOTFsMCAxMjYgNzIgMGM0MywwIDcwLC0xIDgwLC0yIDE5LC0yIDM0LC05IDQ0LC0xOSAxMSwtMTEgMTYsLTI1IDE2LC00MiAwLC0xNyAtNSwtMzAgLTE0LC00MSAtOSwtMTEgLTIzLC0xNyAtNDEsLTE5IC0xMSwtMSAtNDIsLTIgLTk0LC0ybC02MyAwem0wIDIxN2wwIDE0NiAxMDIgMGM0MCwwIDY1LC0xIDc2LC0zIDE2LC0zIDMwLC0xMCA0MCwtMjIgMTAsLTEyIDE2LC0yNyAxNiwtNDcgMCwtMTcgLTQsLTMwIC0xMiwtNDIgLTgsLTExIC0xOSwtMjAgLTM0LC0yNSAtMTUsLTUgLTQ4LC04IC05OCwtOGwtODkgMHptLTIxNTYgLTE2MjVsMCAtMjA5MWM2ODgsLTQgMTIzOCw2IDEyMjIsMTAzMSAtMTYsMTAyMiAtNTA5LDEwNjQgLTEyMjIsMTA2MHptLTU0MCAyMDJjMjMyLDMwIDY0Miw3IDg5Myw2IDI4MywwIDU0MywtMjggNzcyLC0xMzMgOTIzLC00MjMgOTQ5LC0xOTE0IDU1LC0yMjg1IC0yOTIsLTEyMSAtMTMzMiwtMTIxIC0xNzE4LC04NmwtMiAyNDk3em0xNDQzNCAtMTQxNGMtMTMsLTIzMSAtMTcsLTU4NyAtMiwtODE2IDIwLC0zMDMgNDAwLC0yMTAgNTAzLC03MyAxMTUsMTUzIDE2Nyw0NDQgNzYsNjUxIC05OSwyMjkgLTI3MiwyNjIgLTU3OCwyMzh6bS0xMTUwIC0xMTA4YzI2NSw0NCAyODksLTc2IDI4OSw0NDRsLTggMTg0M2MtMjcsMTM3IC0xMjcsMTE5IC0yNzEsMTE5bC02IDE0MSAxNDA0IDAgLTMgLTE0MWMtMzE3LDEgLTI1OSwtMTE5IC0yNTgsLTQxNCAwLC0xOTYgLTE2LC00NzUgNywtNjYwIDY4NiwtMzAgMjMzLDU2MiA2MDQsMTA2MSAyMTUsMjkwIDI5MiwxNjkgNjE1LDE4NyAxMjksNyAyNjcsMTAgMzc4LC00MSAxMzUsLTYyIDEyMSwtMTEyIDIwMSwtMjIwIC00LC00IC0xMiwtMTMgLTE1LC05IC0yLDQgLTEyLC03IC0xNSwtOGwtMTExIC00NGMtNDUsNzQgLTgzLDEyNyAtMjExLDEyNiAtMjMyLC01MjUgNTMsLTkxMCAtNTI4LC0xMTQxbC05NCAtNDljMjg1LC01MCA2MDEsLTIxNiA2MzAsLTUxNCA0NCwtNDQxIC0xMDAsLTYxMyAtMzkzLC03NDQgLTIwMywtOTEgLTE5MTIsLTg4IC0yMjEyLC01N2wtMyAxMjB6bS02NTc2IDExOTRjMzE2LC01OSAzODYsLTE3NiA1NzEsLTI5OSA1MiwxMjcgMzg5LDEyOTEgMzg2LDEzOTQgLTk1LC0xIC01NiwtMSAtMTI2LC0zNCAtNTEsODEgLTc0LDEyOCAtMjExLDEyOCAtMTYyLC0zNDYgLTQ3LC04MTkgLTMxNywtMTAzMSAtMTE5LC05NCAtMjMzLC0xMDEgLTMwMywtMTU5em0tODMyIC03NzJjMCwtMjQ4IDMsLTM0MiAyODEsLTMyMCAzNzUsMjkgMzkzLDYxNSAyNzksODEyIC0xMjcsMjE4IC0zMDgsMjA3IC01NTYsMTk2bC0zIC02ODd6bTE4NDYgLTUyNGM2MDAsLTE4IDE0NDQsLTQgMjA2OCwtMyAxMDEsMCA5MSwyOCAxMTcsODkgMTEsMjYgMjMsNjYgMzMsOTYgNTksMTYyIDIwMiw0OTQgMjI2LDYyMSAtMTYsMTMgLTE5LDE2IC00NSwzMWwtMzAgMTZjLTIwLDEwIC00MiwxOCAtNjAsMjUgLTUzLDIxIC03MCwzMSAtMTM1LDQwIC0yMjEsLTIwOCAtMzEwLC01NzMgLTc1NSwtNTQyIC00LDQwMCAzLDgwMyA1LDEyMDMgMyw3NDEgLTY0LDY3MSAyODYsNzYzIDEwMCwyNiA0OSwtMTkgODYsNTRsLTQgMjgxYy0zODksMyAtMTA4NSwxNiAtMTQ0MCwtNmwwIC0zMTVjMjM2LC01MCAzNzQsLTIyIDM3NCwtMjgzbC01IC0xNjg0Yy0zNjcsLTg0IC01NjYsMzU3IC03MzcsNTI3IC05NCwtMTAgLTIwMCwtNzMgLTI5NiwtMTA3bDMxMiAtODA3em0tNzEyIDU1Yy00NDMsLTExNyAtNjA1LC03OCAtMTExMCwtNzggLTM1NywwIC04MjMsLTI2IC0xMTY2LDRsLTUgMTIzYzM2MiwzOCAyODksLTU4IDI4OSwxMjE1IDAsNDUxIC0yMywxMTc2IDg2LDEyNjVsLTg2IDUgNiAtMTgyYy03Miw1MSAtMTAxLDExNyAtMTkyLDE1MyAtMTcyLC0xOTggLTkwOCwtMjE1OCAtOTkzLC0yNTM1IC0yMzIsMSAtNDU0LDIwIC03MDUsMThsLTEyNCAzNThjMTIwLC00NCAyMTQsLTEyNiAzNTcsLTExNyAxMSwxMjEgLTcwNiwxNzg5IC04NTYsMjE2NCAtNjYsMTY1IC04MSwxNTEgLTI1MiwxOTlsLTMgMTE4IDg2MiAtMTggMTMgLTM4M2MtMTA3LDQxIC0xNDUsNzggLTI3OSw4OSA2LC00NSAxOTgsLTc0NSAyNTgsLTgyOGw4MjAgLTE5IDM3NyAxMTI2IDIwMjkgLTcgLTMgLTEzOWMtMzA2LDAgLTI1OSwtMTAxIC0yNTgsLTM5MyAwLC0yMjQgMCwtNDQ5IDAsLTY3MyA2ODEsLTYwIDIzOCw1NDAgNjEwLDEwNTQgMTk5LDI3NSAyODksMTU5IDU5NSwxNjkgMTg4LDYgMzc3LDQzIDUwOSwtMTA2bDkzIC0xMjZjMTUsMjMgNjQsMTkwIDE5Myw0MTQgNzYsMTMyIDE1NCwyNjIgMjI1LDM5NiAyOTMsMzUgMTczNywyODcgMTg4OSwyNThsMzg4IC0zNTI4YzM3NCwtMTAgMzIyLDM2OSAzMjIsNzAyIDAsNDM0IDAsNjg4IDAsNTAzIDMwNC0wIDMzMy01ODYtMTA2OC02OTMgNTgzIDkzIDM2MiAzMDYgMzYyIDc4MyAwLDM0NCAxLDY4OCAwLDEwMzIgMCwzNzUgMzcsNTg1IDI0OCw3NzUgMTkyLDE3MyA0NDgsMjQ4IDc5NiwyMzcgNjc1LC0yMSA5MzcsLTQ0MSA5NDYsLTExMTkgNCwtMzQzIDEsLTY4OSAwLC0xMDMyIDAsLTE2NyAtMTIsLTMyMyA4MSwtNDM0IDcwLC04NCAxNDYsLTEyMyAyMzQsLTE1NCA4NCwtMjkgOTksMTMgODgsLTEzM2wtOTMxIDFjLTE3LDE1MSA3LDkzIDEzNCwxNDcgMzkzLDE2OSAyNzMsNzQ1IDI3MywxMzA1IDAsNDMzIDI5LDExNTYgLTY1MiwxMTcyIC04MTEsMTkgLTY4NSwtNjE2IC02ODUsLTExMDggMCwtMzAxIDAsLTYwMiAwLC05MDMgMCwtNDIzIDQ0LC00MTQgMzkxLC01MDhsMCAtMTAwYy0xNDYsLTIwIC0xMTQyLC0zNyAtMTI4Miw0bC00NSAxOGMtNiwyIC0xMSw0IC0xNyw1IC00OSwxMiAtOTQsNiAtMTQ3LDNsLTIwNjQgLTE1MmMtMzY0LC0yNSAtODIyLC04OCAtMTE3NSwtODJsMTE2IDQwNnoiLz4NCiA8L2c+DQo8L3N2Zz4NCg==" 
+           style="height:50px; width:auto" alt="DARTUR Biuro Podróży">
+      <div class="logo-sub" style="margin-top:4px">Biuro Podróży · darturlublin.pl</div>
+    </div>
+    <div class="header-right">
+      <div class="doc-title">Wewnętrzna kalkulacja kosztów</div>
+      <div class="doc-date">Sporządzona: ${new Date().toLocaleDateString('pl-PL')}</div>
+      ${klient ? `<div class="doc-date" style="font-weight:600;color:#0f1e3c">Klient: ${klient}</div>` : ''}
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-left">
+      <div class="trip-name">${kierunek}</div>
+      <div class="trip-sub">${od} – ${ddo}${nNoc>0?' · '+nNoc+(nNoc===1?' nocleg':' noclegi/nocy'):''} · ${nOs} uczestników${opiek>0?` + ${opiek} opieki`:''}</div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-price">${fmtN(res.cenaOs)} zł</div>
+      <div class="hero-price-sub">/ osobę (przy ${nOs} os.)</div>
+    </div>
+  </div>
+
+  <!-- INFO BAR -->
+  <div class="info-bar">
+    <div class="info-item">
+      <div class="info-label">Kurs EUR</div>
+      <div class="info-value">${kurs} zł</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Marża</div>
+      <div class="info-value">${res.marzaProc}% · ${fmtN(res.marza)} zł</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">TFG / os</div>
+      <div class="info-value">${res.tfgJed} zł</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Liczba dni</div>
+      <div class="info-value">${getDni()} dni</div>
+    </div>
+  </div>
+
+  <!-- KOSZTY + ATRAKCJE -->
+  <div class="two-col">
+    <div class="section">
+      <div class="section-title">Rozbicie kosztów</div>
+      <table>
+        <tr><td>Transport</td><td>${fmt(res.transport)}</td></tr>
+        ${maNocleg?`<tr><td>Noclegi (${nNoc} ${nNoc===1?'noc':'noce/nocy'})</td><td>${fmt(res.nocleg)}</td></tr>`:''}
+        <tr><td>Pilot / przewodnik</td><td>${fmt(res.pilotKoszt)}</td></tr>
+        <tr><td>Atrakcje i bilety</td><td>${fmt(res.atrakcjeKoszt)}</td></tr>
+        ${res.uslugiKoszt>0?`<tr><td>Usługi zewnętrzne</td><td>${fmt(res.uslugiKoszt)}</td></tr>`:''}
+        <tr><td>Ubezpieczenie</td><td>${fmt(res.ubezp)}</td></tr>
+        <tr><td>Gadżety + opłata księgowa</td><td>${fmt(res.gadzety+res.ksiegowa)}</td></tr>
+        <tr class="subtotal"><td>Koszty netto</td><td>${fmt(res.kosztNetto)}</td></tr>
+        <tr><td>Marża (${res.marzaProc}%)</td><td>${fmt(res.marza)}</td></tr>
+        ${res.vatWlaczony ? `<tr><td>VAT 23% od marży</td><td>${fmt(res.vat)}</td></tr>` : ''}
+        <tr><td>TFG łącznie</td><td>${fmt(res.tfgTotal)}</td></tr>
+        <tr class="total-row"><td>RAZEM</td><td>${fmt(res.total)}</td></tr>
+      </table>
+    </div>
+
+    <div>
+      <div class="section">
+        <div class="section-title">Atrakcje w programie</div>
+        <table>${atrRows}</table>
+      </div>
+      ${pilotDni.length>0?`
+      <div class="section" style="margin-top:14px">
+        <div class="section-title">Pilot – stawki dzienne</div>
+        <div style="font-size:11px;color:#555;line-height:1.8">${pilotRows}</div>
+      </div>`:''}
+    </div>
+  </div>
+
+  <!-- ZALICZKA -->
+  <div class="zaliczka-box">
+    <div>
+      <div class="zaliczka-label">Wymagana zaliczka</div>
+      <div style="font-size:11px;color:#888">do potwierdzenia rezerwacji</div>
+    </div>
+    <div class="zaliczka-val">${fmtN(zaliczka)} zł / osobę</div>
+  </div>
+
+  <!-- WARIANTY -->
+  <div class="section">
+    <div class="section-title">Cena przy różnej liczbie uczestników</div>
+    <div class="warianty-grid">
+      ${[-3,-2,-1,0,2,5].map(d=>nOs+d).filter(n=>n>0).map(n=>`
+        <div class="wariant-item ${n===nOs?'active':''}">
+          <div class="wariant-n">${n} osób</div>
+          <div class="wariant-c">${fmtN(calcTotal(n).cenaOs)} zł</div>
+        </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- WAŻNOŚĆ -->
+  ${wazna?`<div class="waznosc">⚠️ Oferta ważna do: <strong>${wazna}</strong> — każda zmiana liczby uczestników powoduje przeliczenie ceny</div>`:''}
+
+  <!-- NOTATKI -->
+  ${notatki?`<div class="section"><div class="section-title">Notatki</div><div class="notatki-box">${notatki.replace(/\n/g,'<br>')}</div></div>`:''}
+
+  <!-- PODPIS -->
+  <div class="podpis">
+    <div class="podpis-item">Sporządziła/sporządził</div>
+    <div class="podpis-item">Zaakceptowano</div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div><strong>DARTUR Biuro Podróży</strong> · ul. Fabryczna 3/10B, 20-301 Lublin · +48 695 132 039 · darturlublin.pl</div>
+    <div>Dokument wewnętrzny · ${new Date().toLocaleDateString('pl-PL')}</div>
+  </div>
+
+</div>
+<script>window.print();<\/script>
+</body></html>`);
+  win.document.close();
+}
+
+function copySummary() {
+  const nOs = parseInt(document.getElementById('uczestnicy').value)||1;
+  const res = calcTotal(nOs);
+  const kierunek = document.getElementById('kierunek').value === 'inne'
+    ? document.getElementById('kierunek-custom').value
+    : document.getElementById('kierunek').value;
+  const fmt = n => Math.round(n).toLocaleString('pl-PL') + ' zł';
+  const text = `Kalkulacja DARTUR — ${kierunek}
+Data: ${document.getElementById('data-od').value} – ${document.getElementById('data-do').value}
+Klient: ${document.getElementById('klient').value}
+Uczestnicy: ${nOs} os
+
+Transport: ${fmt(res.transport)}
+Nocleg: ${document.getElementById('ma-nocleg').checked ? fmt(res.nocleg) : 'brak'}
+Pilot: ${fmt(res.pilotKoszt)}
+Atrakcje: ${fmt(res.atrakcjeKoszt)}
+Ubezpieczenie: ${fmt(res.ubezp)}
+Gadżety+koszty: ${fmt(res.gadzety+res.ksiegowa)}
+Marża (${res.marzaProc}%): ${fmt(res.marza)}
+TFG: ${fmt(res.tfgTotal)}
+RAZEM: ${fmt(res.total)}
+
+CENA / OS: ${Math.round(res.cenaOs).toLocaleString('pl-PL')} zł/os
+Zaliczka: ${fmt(parseFloat(document.getElementById('zaliczka').value)||100)}/os`;
+  navigator.clipboard.writeText(text).then(()=>alert('Skopiowano do schowka!'));
+}
+
+// ====== ZAPIS KALKULACJI DO DRIVE (folder „Oferty") ======
+// URL web appa DARTUR Centrum (/exec). Wdróż DARTUR_centrum.gs jako aplikację
+// internetową (Wykonuj jako: Ja | Dostęp: Wszyscy) i wklej tu URL kończący się /exec.
+const WEBAPP_URL_CENTRUM = 'https://script.google.com/macros/s/AKfycbx0B9yEMr9yAnPfpa2TacRVyiriWvhikNWIYtRtd-XqmUpQlMeFvWwBI_sos8Ou8GvgQw/exec';
+
+function generateGoogleSheet() {
+  const nOs = parseInt(document.getElementById('uczestnicy').value)||1;
+  const opiek = parseInt(document.getElementById('opiekunowie').value)||0;
+  const pilotOs = parseInt(document.getElementById('pilot-os').value)||1;
+  const kurs = parseFloat(document.getElementById('kurs-eur').value)||4.25;
+  const res = calcTotal(nOs);
+  const kierunek = document.getElementById('kierunek').value === 'inne'
+    ? document.getElementById('kierunek-custom').value
+    : document.getElementById('kierunek').value;
+  const klient = document.getElementById('klient').value;
+  const od = document.getElementById('data-od').value;
+  const ddo = document.getElementById('data-do').value;
+  const maNocleg = document.getElementById('ma-nocleg').checked;
+  const zaliczka = parseFloat(document.getElementById('zaliczka').value)||100;
+  const notatki = document.getElementById('notatki').value;
+  const sporzadzil = (document.getElementById('sporzadzil')||{}).value || '';
+
+  const allOs = res.allOs;
+  const gv = (id)=>{ const e=document.getElementById(id); return e? (parseFloat(e.value)||0):0; };
+  const gi = (id)=>{ const e=document.getElementById(id); return e? (parseInt(e.value)||0):0; };
+  const gc = (id)=>{ const e=document.getElementById(id); return e? !!e.checked:false; };
+
+  const data = [];
+  const push = (row) => { data.push(row); return data.length; };
+  const formuly = [];
+  const fadd = (cell,f)=> formuly.push({cell:cell, f:f});
+
+  // Nagłówek
+  push(['DARTUR Biuro Podróży — Kalkulacja wycieczki', '', '']);
+  push(['Kierunek:', kierunek, '']);
+  push(['Klient:', klient, '']);
+  push(['Data:', od + ' – ' + ddo, '']);
+  push(['Sporządził:', sporzadzil, '']);
+  push(['Sporządzono:', new Date().toLocaleDateString('pl-PL'), '']);
+  push(['', '', '']);
+
+  // Parametry
+  const R_SEC_PARAM = push(['PARAMETRY', 'Wartość', '']);
+  const R_NOS   = push(['Uczniowie / płacący (nOs)', nOs, 'zmień, żeby przeliczyć ceny']);
+  const R_OPIEK = push(['Opiekunowie (gratis)', opiek, 'na umowie — wliczani do TFG']);
+  const R_PILOT = push(['Pilot (gratis)', pilotOs, 'poza umową — bez TFG']);
+  const R_ALLOS = push(['Wszyscy łącznie (allOs)', nOs + opiek + pilotOs, 'uczestnicy + opiekunowie + pilot']);
+  const R_KURS  = push(['Kurs EUR (zł)', kurs, 'zmień kurs gdy zmieniają się ceny EUR']);
+  const R_MARZA = push(['Marża (%)', res.marzaProc, 'zmień % marży']);
+  const R_TFGJED = push(['TFG (zł/os)', res.tfgJed || 0, 'składka funduszu gwarancyjnego / os']);
+  const R_TFPJED = push(['TFP (zł/os)', res.tfpJed || 0, 'składka funduszu pomocowego / os']);
+  const R_KOREKTAOS = push(['Korekta ceny (zł/os)', res.korektaOs || 0, 'ręczna korekta / zaokrąglenie — może być ujemna']);
+  fadd('B'+R_ALLOS, '=B'+R_NOS+'+B'+R_OPIEK+'+B'+R_PILOT);
+  push(['', '', '']);
+
+  // Koszty — nagłówek. A=nazwa · B=kwota(formuła) · C=szczegóły · D=ilość/km · E=stawka/cena · F=× noce/dni/%
+  const R_SEC_KOSZTY = push(['ZESTAWIENIE KOSZTÓW', 'Kwota (zł)', 'Szczegóły', 'Ilość / km', 'Stawka / cena', '× noce/dni/%']);
+  const COSTS_START = data.length + 1;
+  const KURS = 'B'+R_KURS;
+
+  // pomocnik: dodaj wiersz kosztu (kwota w B, składniki w D/E/F). Zwraca nr wiersza.
+  const cr = (nazwa, kwota, szczeg, d, e, f) => push([
+    nazwa, Math.round((kwota||0)*100)/100, szczeg||'',
+    (d!=null?d:''), (e!=null?e:''), (f!=null?f:'')
+  ]);
+
+  // ── TRANSPORT AUTOKAR ──
+  const drogi = gv('drogi'), parkingi = gv('parkingi');
+  if (gc('transport-staly')) {
+    cr('Transport autokar (kwota stała)', gv('transport-kwota'), 'ryczałt za autokar');
+  } else {
+    const km=gv('km'), stawka=gv('km-stawka'), zakl=gv('km-zakl');
+    const r = cr('Autokar — przejazd', km*(1+zakl/100)*stawka, 'km × stawka × (1+zakładka%)', km, stawka, zakl);
+    fadd('B'+r, '=D'+r+'*E'+r+'*(1+F'+r+'/100)');
+  }
+  if (drogi>0)    cr('Drogi / winiety / opłaty drogowe', drogi, 'koszt stały');
+  if (parkingi>0) cr('Parkingi', parkingi, 'koszt stały');
+  if (gc('ma-kierowca2')) {
+    const kk=gv('kierowca2-koszt'), kd=gi('kierowca2-dni');
+    if (kk>0 && kd>0) { const r=cr('Drugi kierowca', kk*kd, 'koszt/dzień × liczba dni', kd, kk); fadd('B'+r,'=D'+r+'*E'+r); }
+  }
+
+  // ── TRANSPORT LOTNICZY ──
+  if (gc('ma-lot')) {
+    const cena=gv('lot-bilet'), lo=gi('lot-os'), loC = lo>0?lo:allOs;
+    if (cena>0) { const r=cr('Lot — bilety lotnicze', cena*loC, 'cena × osoby', loC, cena); fadd('B'+r,'=D'+r+'*E'+r); }
+    if (gv('lot-bus')>0)  cr('Lot — transfer/bus na lotnisko', gv('lot-bus'), 'koszt stały');
+    if (gv('lot-inne')>0) cr('Lot — inne (bagaż, opłaty)', gv('lot-inne'), 'koszt stały');
+    if (gc('lot-pilot') && gv('lot-pilot-kwota')>0) cr('Lot — bilet pilota', gv('lot-pilot-kwota'), 'koszt stały');
+  }
+
+  // ── NOCLEG (pokój po pokoju + taksa per nocleg) ──
+  if (gc('ma-nocleg')) {
+    const eur = (document.getElementById('nocleg-waluta')||{}).value === 'EUR';
+    const taksaOsC = gi('taksa-os')>0 ? gi('taksa-os') : allOs;
+    rooms.forEach(rm => {
+      const noc = rm.noc || gi('noclegi-ile') || 1;
+      const perOs = (rm.tryb==='osoba');
+      const liczba = perOs ? (rm.ile||0)*(rm.os||0) : (rm.ile||0);   // osoby albo pokoje
+      let val = liczba*(rm.cena||0)*noc; if(eur) val*=kurs;
+      const opis = (perOs?'osoby × cena/os × noce':'pokoje × cena/pok × noce') + (eur?' (EUR → zagranica)':'');
+      const r = cr('Nocleg: '+(rm.typ||'pokój'), val, opis, liczba, rm.cena||0, noc);
+      fadd('B'+r, eur ? '=D'+r+'*E'+r+'*F'+r+'*'+KURS : '=D'+r+'*E'+r+'*F'+r);
+      if ((rm.taksa||0)>0) {
+        let tv = rm.taksa*taksaOsC*noc; if(eur) tv*=kurs;
+        const r2 = cr('Taksa klim.: '+(rm.typ||'pokój'), tv, 'taksa/os/doba × wszyscy × doby'+(eur?' (EUR)':''), taksaOsC, rm.taksa, noc);
+        fadd('B'+r2, eur ? '=D'+r2+'*E'+r2+'*F'+r2+'*'+KURS : '=D'+r2+'*E'+r2+'*F'+r2);
+      }
+    });
+  }
+
+  // ── PILOT / PRZEWODNIK (dzień po dniu) ──
+  pilotDni.forEach((p,i)=> cr('Pilot — dzień '+(i+1), p.stawka, 'stawka dzienna pilota'));
+  if (gc('ma-przewodnik') && typeof przewodnikDni!=='undefined') {
+    const pOpis = ((document.getElementById('przewodnik-opis')||{}).value || '').trim() || 'stawka dzienna przewodnika';
+    przewodnikDni.forEach((p,i)=> cr('Przewodnik — dzień '+(i+1), p.stawka, pOpis));
+  }
+
+  // ── SŁUCHAWKI ──
+  if (gc('ma-sluchawki') && res.sluchKoszt>0) {
+    const so=gi('sluchawki-os'), soC = so>0?so:nOs;
+    const r=cr('Słuchawki (audioguide)', res.sluchKoszt, 'stawka × osoby × dni', soC, gv('sluchawki'), gv('sluchawki-dni'));
+    fadd('B'+r, '=D'+r+'*E'+r+'*F'+r);
+  }
+
+  // ── WYŻYWIENIE (pozycja po pozycji) ──
+  wyzywienie.forEach(w => {
+    const oc = (w.os>0?w.os:allOs);
+    const r=cr('Wyżywienie: '+(w.nazwa||'posiłek'), (w.cena||0)*oc, 'cena × osoby', oc, w.cena||0);
+    fadd('B'+r, '=D'+r+'*E'+r);
+  });
+
+  // ── ATRAKCJE (pozycja po pozycji; EUR → zagranica) ──
+  attractions.forEach(a => {
+    const eur = a.waluta==='EUR';
+    const oc = (a.os && a.os>0)?a.os:allOs;
+    let val = (a.cena||0)*oc; if(eur) val*=kurs;
+    const r=cr('Atrakcja: '+(a.nazwa||'bilet'), val, eur?'cena × osoby (EUR → zagranica)':'cena × osoby', oc, a.cena||0);
+    fadd('B'+r, eur ? '=D'+r+'*E'+r+'*'+KURS : '=D'+r+'*E'+r);
+  });
+
+  // ── USŁUGI ZEWNĘTRZNE (cena ustalona lub za uczestnika; EUR → zagranica) ──
+  uslugi.forEach(u => {
+    const eur = u.waluta==='EUR';
+    const kwota = parseFloat(u.kwota)||0;
+    if(u.typ==='os') {
+      const oc = (u.os && u.os>0)?u.os:allOs;
+      let val = kwota*oc; if(eur) val*=kurs;
+      const r=cr('Usługa: '+(u.nazwa||'usługa zewn.'), val, eur?'kwota × osoby (EUR → zagranica)':'kwota × osoby', oc, kwota);
+      fadd('B'+r, eur ? '=D'+r+'*E'+r+'*'+KURS : '=D'+r+'*E'+r);
+    } else {
+      let val = kwota; if(eur) val*=kurs;
+      const r=cr('Usługa: '+(u.nazwa||'usługa zewn.'), val, eur?'cena ustalona (EUR → zagranica)':'cena ustalona', 1, kwota);
+      fadd('B'+r, eur ? '=E'+r+'*'+KURS : '=E'+r);
+    }
+  });
+
+  // ── UBEZPIECZENIE (krajowe + zagraniczne osobno — ważne dla VAT) ──
+  const ubOsC = gi('ubezp-os')>0 ? gi('ubezp-os') : allOs;
+  if (res.ubezpKraj>0) {
+    const r=cr('Ubezpieczenie krajowe (NNW)', res.ubezpKraj, 'stawka × dni × osoby (kraj)', ubOsC, gv('ubezp-pl'), gi('ubezp-pl-dni'));
+    fadd('B'+r, '=D'+r+'*E'+r+'*F'+r);
+  }
+  if (res.ubezpZagr>0) {
+    const r=cr('Ubezpieczenie zagraniczne (KL/assistance)', res.ubezpZagr, 'stawka × dni × osoby (zagranica)', ubOsC, gv('ubezp-zagr'), gi('ubezp-zagr-dni'));
+    fadd('B'+r, '=D'+r+'*E'+r+'*F'+r);
+  }
+
+  // ── GADŻETY (2 rodzaje: cena × ilość; ilość 0 = uczniowie) ──
+  const g1c=gv('gadzet1-cena'), g1s=gi('gadzet1-szt'), g1sEff = g1s>0?g1s:nOs;
+  const g2c=gv('gadzet2-cena'), g2s=gi('gadzet2-szt'), g2sEff = g2s>0?g2s:nOs;
+  if (g1c>0) { const r=cr('Gadżet 1 / upominek', g1c*g1sEff, 'cena × ilość', g1sEff, g1c); fadd('B'+r,'=D'+r+'*E'+r); }
+  if (g2c>0) { const r=cr('Gadżet 2 / upominek', g2c*g2sEff, 'cena × ilość', g2sEff, g2c); fadd('B'+r,'=D'+r+'*E'+r); }
+  cr('Opłata księgowa / administracyjna', res.ksiegowa, 'koszt stały');
+
+  const COSTS_END = data.length;
+  push(['', '', '']);
+
+  // ── PODSUMOWANIE (z formułami) ──
+  const R_NETTO = cr('Koszty netto (suma)', res.kosztNetto, 'SUMA wszystkich kosztów powyżej');
+  fadd('B'+R_NETTO, '=SUM(B'+COSTS_START+':B'+COSTS_END+')');
+  const R_ZAGR = cr('   w tym koszty zagraniczne (EUR)', res.kosztZagr, 'pozycje liczone w EUR — VAT 0%');
+  const R_KRAJ = cr('   w tym koszty krajowe', res.kosztKraj, 'reszta — podstawa VAT marżowego');
+  fadd('B'+R_KRAJ, '=B'+R_NETTO+'-B'+R_ZAGR);
+  const R_MARZAKWO = push(['Marża (' + res.marzaProc + '%)', Math.round(res.marza*100)/100, 'koszty netto × marża %']);
+  fadd('B'+R_MARZAKWO, '=B'+R_NETTO+'*B'+R_MARZA+'/100');
+  let R_VAT = null;
+  if (res.vatWlaczony) {
+    R_VAT = push(['VAT 23% od marży krajowej', Math.round(res.vat*100)/100, 'marża × (kraj/netto) × 23% — zagranica 0%']);
+    fadd('B'+R_VAT, '=B'+R_MARZAKWO+'*B'+R_KRAJ+'/B'+R_NETTO+'*23/100');
+  }
+  const R_TFG = push(['TFG (Fundusz Gwarancyjny)', Math.round(res.tfgTotal*100)/100,
+    res.tfgJed + ' zł × ' + res.tfgOsCount + ' os (uczniowie + opiekunowie)']);
+  fadd('B'+R_TFG, '=B'+R_TFGJED+'*(B'+R_NOS+'+B'+R_OPIEK+')');
+  let R_TFP = null;
+  if ((res.tfpJed||0) > 0) {
+    R_TFP = push(['TFP (Fundusz Pomocowy)', Math.round(res.tfpTotal*100)/100,
+      res.tfpJed + ' zł × ' + res.tfgOsCount + ' os (uczniowie + opiekunowie)']);
+    fadd('B'+R_TFP, '=B'+R_TFPJED+'*(B'+R_NOS+'+B'+R_OPIEK+')');
+  }
+  let R_KOREKTA = null;
+  if ((res.korektaOs||0) != 0) {
+    R_KOREKTA = push(['Korekta / zaokrąglenie ceny', Math.round((res.korektaTotal||0)*100)/100,
+      res.korektaOs + ' zł/os × ' + nOs + ' uczniów (ręczna korekta)']);
+    fadd('B'+R_KOREKTA, '=B'+R_KOREKTAOS+'*B'+R_NOS);
+  }
+  const R_RAZEM = push(['RAZEM (cena imprezy)', Math.round(res.total*100)/100, '']);
+  const tfpTerm = R_TFP ? '+B'+R_TFP : '';
+  const korTerm = R_KOREKTA ? '+B'+R_KOREKTA : '';
+  fadd('B'+R_RAZEM, R_VAT
+    ? '=B'+R_NETTO+'+B'+R_MARZAKWO+'+B'+R_VAT+'+B'+R_TFG+tfpTerm+korTerm
+    : '=B'+R_NETTO+'+B'+R_MARZAKWO+'+B'+R_TFG+tfpTerm+korTerm);
+  push(['', '', '']);
+  const R_CENA = push(['CENA / OSOBĘ', Math.round(res.cenaOs*100)/100, '÷ ' + nOs + ' płacących uczniów']);
+  fadd('B'+R_CENA, '=B'+R_RAZEM+'/B'+R_NOS);
+  push(['Zaliczka / os', zaliczka, '']);
+  push(['', '', '']);
+
+  let R_SEC_NOT = 0;
+  if(notatki) {
+    push(['', '', '']);
+    R_SEC_NOT = push(['NOTATKI', '', '']);
+    push([notatki, '', '']);
+  }
+
+  // Układ do formatowania (sekcje, podświetlenia, format zł)
+  const uklad = {
+    titleRow: 1,
+    sekcjeRows: [R_SEC_PARAM, R_SEC_KOSZTY].concat(R_SEC_NOT ? [R_SEC_NOT] : []),
+    razemRows: [R_RAZEM, R_CENA],
+    moneyStart: COSTS_START
+  };
+
+  // Termin opisowy (pora roku/miesiąc) — jeśli podany, wycieczka jest „bez konkretnej daty":
+  // ignorujemy pola dat, a folder dostaje ten opis zamiast prefiksu daty.
+  const terminOpis = ((document.getElementById('termin-opis')||{}).value || '').trim();
+  const odSend  = terminOpis ? '' : od;
+  const ddoSend = terminOpis ? '' : ddo;
+
+  // Nazwa folderu = konwencja DARTUR: "YYYY.MM.DD Kierunek dla Klient" (lub "<termin> Kierunek dla Klient")
+  const folderNazwa = budujNazweFolderuJS(kierunek, klient, odSend, terminOpis);
+
+  if (WEBAPP_URL_CENTRUM && WEBAPP_URL_CENTRUM.indexOf('PASTE') === -1) {
+    // Wysyłamy DANE + FORMUŁY + UKŁAD — kalkulację buduje serwerowo web app (natywny
+    // Google Sheet z formułami). Bez SheetJS = bez błędów CDN.
+    zapiszKalkulacjeDoDrive(data, folderNazwa, {
+      kierunek, klient, od: odSend, ddo: ddoSend, terminOpis,
+      cenaOs: Math.round(res.cenaOs), nOs, sporzadzil, zaliczka,
+      zamawiajacy: (document.getElementById('zamawiajacy')||{}).value || '',
+      kontakt:     (document.getElementById('kontakt')||{}).value || '',
+      miasto:      (document.getElementById('miasto')||{}).value || '',
+      pilotImie:   (document.getElementById('pilot-imie')||{}).value || '',
+      nOpiek:      parseInt((document.getElementById('opiekunowie')||{}).value)||0,
+      dni:         terminOpis ? '' : getDni(),
+      chceUmowe:   !!(document.getElementById('chce-umowe')||{}).checked
+    }, formuly, uklad);
+  } else {
+    alert('⚠️ Web app nie jest skonfigurowany (WEBAPP_URL_CENTRUM).\nWdróż DARTUR_centrum.gs jako aplikację internetową i wklej URL /exec — wtedy „Utwórz folder / kalkulację" zapisze wszystko wprost do „Oferty".');
+  }
+}
+
+// Nazwa folderu/pliku w konwencji DARTUR (jak budujNazweFolderu w DARTUR_centrum.gs).
+function budujNazweFolderuJS(kierunek, klient, od, terminOpis) {
+  let nazwa = '';
+  const m = String(od||'').match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (m) nazwa += m[1] + '.' + m[2] + '.' + m[3] + ' ';
+  else if (terminOpis) nazwa += String(terminOpis).trim() + ' ';
+  nazwa += (kierunek || 'Wycieczka');
+  if (klient) nazwa += ' dla ' + klient;
+  return nazwa.replace(/[\\/]/g,'-').replace(/\s+/g,' ').trim().slice(0,120);
+}
+
+// POST do web appa centrum (no-cors, fire-and-forget). Potwierdzenie = e-mail na biuro.
+// Wysyła wiersze kalkulacji (2D) — web app tworzy folder (lub używa istniejącego)
+// i zapisuje kalkulację jako Google Sheet z kolejnym numerem.
+function zapiszKalkulacjeDoDrive(rows, nazwa, meta, formuly, uklad) {
+  const payload = {
+    action: 'utworzWycieczke',
+    kierunek: meta.kierunek, klient: meta.klient,
+    dataOd: meta.od, dataDo: meta.ddo, terminOpis: meta.terminOpis || '', przygotowal: meta.sporzadzil || '',
+    cenaOs: meta.cenaOs, nOs: meta.nOs, zaliczka: meta.zaliczka || 0,
+    zamawiajacy: meta.zamawiajacy || '', kontakt: meta.kontakt || '', miasto: meta.miasto || '',
+    pilotImie: meta.pilotImie || '',
+    nOpiek: meta.nOpiek || 0, dni: meta.dni || 0, chceUmowe: !!meta.chceUmowe,
+    rows: rows, formuly: formuly || [], uklad: uklad || {}
+  };
+  fetch(WEBAPP_URL_CENTRUM, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // text/plain = bez preflight CORS
+    body: JSON.stringify(payload)
+  }).then(function(){
+    alert('📁 Wysłano.\n\nW „Oferty": folder „' + nazwa + '" (utworzony lub istniejący) + kalkulacja jako Google Sheet (z kolejnym nr, jeśli już była).\nFolder pojawi się na Dysku w ciągu ~minuty.');
+  }).catch(function(e){
+    alert('Błąd wysyłki do web appa: ' + e.message + '\nSprawdź URL /exec i wdrożenie.');
+  });
+}
+
+// ====== START ======
+init();
+</script>
+</body>
+</html>
+<script>
+// PATCH: rozszerzona lista kierunków i atrakcji z Google Drive
+(function() {
+  // Dodaj nowe kierunki do selecta
+  const kierunekSel = document.getElementById('kierunek');
+  const noweKierunki = [
+    ["Mazury (Giżycko, Wilczy Szaniec)", "Mazury (Giżycko, Wilczy Szaniec)"],
+    ["Zakopane – Tatry (3 dni)", "Zakopane – Tatry (3 dni)"],
+    ["Kraków + Wieliczka (2 dni)", "Kraków + Wieliczka (2 dni)"],
+    ["Kraków + Energylandia (2 dni)", "Kraków + Energylandia (2 dni)"],
+    ["Sandomierz (2 dni)", "Sandomierz (2 dni)"],
+    ["Świętokrzyskie (1 dzień)", "Świętokrzyskie (1 dzień)"],
+    ["Świętokrzyskie (2 dni)", "Świętokrzyskie (2 dni)"],
+    ["Zamość + Zoo", "Zamość + Zoo"],
+    ["Zamość + Archipelag", "Zamość + Archipelag"],
+    ["Roztocze (1 dzień)", "Roztocze (1 dzień)"],
+    ["Doboszówka / Osada Leśna", "Doboszówka / Osada Leśna"],
+    ["Kazimierz Dolny", "Kazimierz Dolny"],
+    ["Lublin (1 dzień)", "Lublin (1 dzień)"],
+    ["Fabryka Bombek (Świdnik / Nowy Sącz)", "Fabryka Bombek (Świdnik / Nowy Sącz)"],
+    ["Bałtów Zima", "Bałtów Zima"],
+    ["Wrocław – Praga – Kudowa (3 dni)", "Wrocław – Praga – Kudowa (3 dni)"],
+    ["Węgry – Budapeszt (4 dni)", "Węgry – Budapeszt (4 dni)"],
+    ["Wiedeń – Czeskie Morawy (4 dni)", "Wiedeń – Czeskie Morawy (4 dni)"],
+    ["Wielokulturowe Podlasie (3-4 dni)", "Wielokulturowe Podlasie (3-4 dni)"],
+  ];
+  // Wstaw przed "inne"
+  const inneOpt = Array.from(kierunekSel.options).find(o=>o.value==='inne');
+  noweKierunki.forEach(([val, label]) => {
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = label;
+    kierunekSel.insertBefore(opt, inneOpt);
+  });
+
+  // Rozszerzona lista atrakcji — dodaj nowe optgroup
+  const presetSel = document.getElementById('preset-atrakcja');
+
+  const grWaw = document.createElement('optgroup');
+  grWaw.label = 'Warszawa';
+  [
+    ['CNK (Centrum Nauki Kopernik) — wystawy|26|PLN', 'CNK (Centrum Nauki Kopernik) — wystawy — 26 zł/os'],
+    ['Muzeum Wojska Polskiego|45|PLN', 'Muzeum Wojska Polskiego — 45 zł/os'],
+    ['PGE Narodowy — zwiedzanie|24|PLN', 'PGE Narodowy — zwiedzanie — 24 zł/os'],
+    ['Teatr ROMA — bilet|110|PLN', 'Teatr ROMA — bilet — 110 zł/os'],
+    ['Łazienki Królewskie — bilet|50|PLN', 'Łazienki Królewskie — bilet — 50 zł/os'],
+    ['Przewodnik Łazienki (ryczałt)|520|PLN', 'Przewodnik Łazienki (ryczałt) — 520 zł'],
+    ['Pawiak — wstęp|10|PLN', 'Pawiak — wstęp — 10 zł/os'],
+    ['Muzeum Powstania Warszawskiego (MPW)|45|PLN', 'Muzeum Powstania Warszawskiego — 45 zł/os'],
+    ['Szucha (Ministerstwo Pamięci)|10|PLN', 'Szucha — 10 zł/os'],
+    ['Minicity Warszawa|79|PLN', 'Minicity Warszawa — 79 zł/os'],
+    ['Stacja Grawitacja|50|PLN', 'Stacja Grawitacja — 50 zł/os'],
+  ].forEach(([val, label]) => { const o = document.createElement('option'); o.value=val; o.textContent=label; grWaw.appendChild(o); });
+  presetSel.appendChild(grWaw);
+
+  const grKrak = document.createElement('optgroup');
+  grKrak.label = 'Kraków';
+  [
+    ['Kopalnia Wieliczka (bilet grupowy)|40|PLN', 'Kopalnia Wieliczka — bilet — 40 zł/os'],
+    ['Kopalnia Bochnia (bilet grupowy)|40|PLN', 'Kopalnia Bochnia — bilet — 40 zł/os'],
+    ['Katedra Wawelska|15|PLN', 'Katedra Wawelska — 15 zł/os'],
+    ['Mariacki — wstęp|10|PLN', 'Mariacki — wstęp — 10 zł/os'],
+    ['Park Lema|17|PLN', 'Park Lema — 17 zł/os'],
+    ['Energylandia — bilet|95|PLN', 'Energylandia — bilet — 95 zł/os'],
+  ].forEach(([val, label]) => { const o = document.createElement('option'); o.value=val; o.textContent=label; grKrak.appendChild(o); });
+  presetSel.appendChild(grKrak);
+
+  const grSwieto = document.createElement('optgroup');
+  grSwieto.label = 'Świętokrzyskie';
+  [
+    ['Park Legend|25|PLN', 'Park Legend — 25 zł/os'],
+    ['Muzeum Orła Białego — bilet|10|PLN', 'Muzeum Orła Białego — bilet — 10 zł/os'],
+    ['Muzeum Orła — strzelnica|12|PLN', 'Muzeum Orła — strzelnica — 12 zł/os'],
+    ['Muzeum Orła — przewodnik (ryczałt/gr)|100|PLN', 'Muzeum Orła — przewodnik (ryczałt) — 100 zł/gr'],
+    ['Zamek Chęciny — bilet|17|PLN', 'Zamek Chęciny — bilet — 17 zł/os'],
+    ['Jaskinia Kadzielnia|20|PLN', 'Jaskinia Kadzielnia — 20 zł/os'],
+    ['Święty Krzyż — wstęp|5|PLN', 'Święty Krzyż — wstęp — 5 zł/os'],
+    ['ŚPN — bilet dziecko|5|PLN', 'ŚPN — bilet dziecko — 5 zł/os'],
+    ['Gołoborza|5|PLN', 'Gołoborza — 5 zł/os'],
+  ].forEach(([val, label]) => { const o = document.createElement('option'); o.value=val; o.textContent=label; grSwieto.appendChild(o); });
+  presetSel.appendChild(grSwieto);
+
+  const grZamosc = document.createElement('optgroup');
+  grZamosc.label = 'Zamość i okolice';
+  [
+    ['Zoo Zamość — bilet|35|PLN', 'Zoo Zamość — bilet — 35 zł/os'],
+    ['Obiad Luneta Zamość|38|PLN', 'Obiad Luneta Zamość — 38 zł/os'],
+    ['MiniLab Zamość|25|PLN', 'MiniLab Zamość — 25 zł/os'],
+    ['Archipelag Roztocze (pakiet Open)|80|PLN', 'Archipelag Roztocze — pakiet Open — 80 zł/os'],
+    ['Park Linowy Roztocze|40|PLN', 'Park Linowy Roztocze — 40 zł/os'],
+  ].forEach(([val, label]) => { const o = document.createElement('option'); o.value=val; o.textContent=label; grZamosc.appendChild(o); });
+  presetSel.appendChild(grZamosc);
+
+  const grKazimierz = document.createElement('optgroup');
+  grKazimierz.label = 'Kazimierz / Sandomierz';
+  [
+    ['Meleksy Kazimierz Dolny|20|PLN', 'Meleksy Kazimierz Dolny — 20 zł/os'],
+    ['Statek po Wiśle|30|PLN', 'Statek po Wiśle — 30 zł/os'],
+    ['Muzeum Złotnictwa Kazimierz|12|PLN', 'Muzeum Złotnictwa Kazimierz — 12 zł/os'],
+    ['Koguciki Kazimierz (piekarnia Sarzyński)|11|PLN', 'Koguciki Kazimierz — 11 zł/os'],
+    ['Zamek Sandomierz — bilet|11|PLN', 'Zamek Sandomierz — bilet — 11 zł/os'],
+    ['Podziemia Sandomierz|19|PLN', 'Podziemia Sandomierz — 19 zł/os'],
+  ].forEach(([val, label]) => { const o = document.createElement('option'); o.value=val; o.textContent=label; grKazimierz.appendChild(o); });
+  presetSel.appendChild(grKazimierz);
+
+  const grLublin = document.createElement('optgroup');
+  grLublin.label = 'Lublin i okolice';
+  [
+    ['Muzeum Wsi Lubelskiej|20|PLN', 'Muzeum Wsi Lubelskiej — 20 zł/os'],
+    ['Strefa Wysokich Lotów|30|PLN', 'Strefa Wysokich Lotów — 30 zł/os'],
+    ['SuperIQ Lublin|35|PLN', 'SuperIQ Lublin — 35 zł/os'],
+    ['Teatr Lublin (lekcja)|35|PLN', 'Teatr Lublin — lekcja — 35 zł/os'],
+    ['Zakrystia Lublin|7|PLN', 'Zakrystia Lublin — 7 zł/os'],
+    ['Warsztaty lalkarskie (ryczałt/gr)|250|PLN', 'Warsztaty lalkarskie (ryczałt) — 250 zł/gr'],
+  ].forEach(([val, label]) => { const o = document.createElement('option'); o.value=val; o.textContent=label; grLublin.appendChild(o); });
+  presetSel.appendChild(grLublin);
+
+  const grBombki = document.createElement('optgroup');
+  grBombki.label = 'Fabryka Bombek (Nowy Sącz)';
+  [
+    ['Muzeum Bombki — bilet dziecko|40|PLN', 'Muzeum Bombki — bilet dziecko — 40 zł/os'],
+    ['Muzeum Bombki — warsztaty nauczyciel|10|PLN', 'Muzeum Bombki — warsztaty nauczyciel — 10 zł/os'],
+    ['Bombka imienna|12|PLN', 'Bombka imienna — 12 zł/szt'],
+    ['Zbrojownia|10|PLN', 'Zbrojownia — 10 zł/os'],
+  ].forEach(([val, label]) => { const o = document.createElement('option'); o.value=val; o.textContent=label; grBombki.appendChild(o); });
+  presetSel.appendChild(grBombki);
+
+  const grMazury = document.createElement('optgroup');
+  grMazury.label = 'Mazury';
+  [
+    ['Giżycko — rejs|55|PLN', 'Giżycko — rejs — 55 zł/os'],
+    ['Giżycko — wieża ciśnień|15|PLN', 'Giżycko — wieża ciśnień — 15 zł/os'],
+    ['Wilczy Szaniec — bilet|27|PLN', 'Wilczy Szaniec — bilet — 27 zł/os'],
+    ['Leśniczówka Pranie (z przewodnikiem)|18|PLN', 'Leśniczówka Pranie — 18 zł/os'],
+    ['Klasztor Wojnowo|10|PLN', 'Klasztor Wojnowo — 10 zł/os'],
+    ['Spływ kajakowy (As-Tur)|40|PLN', 'Spływ kajakowy — ok. 40 zł/os'],
+    ['Muzeum w Owczarni|25|PLN', 'Muzeum w Owczarni — 25 zł/os'],
+    ['Obiadokolacja Hotel Tajty|99|PLN', 'Obiadokolacja Hotel Tajty — 99 zł/os'],
+  ].forEach(([val, label]) => { const o = document.createElement('option'); o.value=val; o.textContent=label; grMazury.appendChild(o); });
+  presetSel.appendChild(grMazury);
+
+  const grZakop = document.createElement('optgroup');
+  grZakop.label = 'Zakopane / Tatry';
+  [
+    ['Termy Zakopane — dziecko|75|PLN', 'Termy Zakopane — dziecko — 75 zł/os'],
+    ['Termy Zakopane — dorosły|87|PLN', 'Termy Zakopane — dorosły — 87 zł/os'],
+    ['TPN — bilet dziecko|5|PLN', 'TPN — bilet dziecko — 5 zł/os (grupowy)'],
+    ['TPN — bilet dorosły|10|PLN', 'TPN — bilet dorosły — 10 zł/os'],
+  ].forEach(([val, label]) => { const o = document.createElement('option'); o.value=val; o.textContent=label; grZakop.appendChild(o); });
+  presetSel.appendChild(grZakop);
+
+  const grDobosz = document.createElement('optgroup');
+  grDobosz.label = 'Doboszówka / Osada Leśna';
+  [
+    ['Osada Leśna — pakiet (dziecko)|50|PLN', 'Osada Leśna — pakiet dziecko — 50 zł/os'],
+    ['Osada Leśna — warsztaty|50|PLN', 'Osada Leśna — warsztaty — 50 zł/os'],
+    ['Zagroda Sitarska|10|PLN', 'Zagroda Sitarska — 10 zł/os'],
+    ['Obiad dziecko (Osada)|20|PLN', 'Obiad dziecko (Osada) — 20 zł/os'],
+    ['Obiad dorosły (Osada)|25|PLN', 'Obiad dorosły (Osada) — 25 zł/os'],
+  ].forEach(([val, label]) => { const o = document.createElement('option'); o.value=val; o.textContent=label; grDobosz.appendChild(o); });
+  presetSel.appendChild(grDobosz);
+
+  // ── HOTELE z listy (auto-cena/tryb/waluta) — z realnych ofert (VI 2026) ──
+  const hotelSel = document.getElementById('preset-hotel');
+  if (hotelSel) {
+    [
+      ['Amalia Kudowa (HB)|190|osoba|PLN', 'Amalia Kudowa — 190 zł/os HB'],
+      ['Zajazd Leśny Zwierzyniec (z posiłkami)|170|osoba|PLN', 'Zajazd Leśny Zwierzyniec — 170 zł/os'],
+      ['Zajazd Zwierzyniec — kierowca+pilot gratis|0|pokoj|PLN', 'Zwierzyniec — kierowca/przewodnik gratis'],
+      ['Barcelona Royal Star 4* (HB)|41|osoba|EUR', 'Barcelona Royal Star 4* — 41 EUR/os HB'],
+      ['Barcelona Olympic 3* (HB)|36|osoba|EUR', 'Barcelona Olympic 3* — 36 EUR/os HB'],
+      ['Barcelona — dopłata pokój 1-os|30|osoba|EUR', 'Barcelona — dopłata 1-os — 30 EUR/doba'],
+    ].forEach(([val, label]) => { const o = document.createElement('option'); o.value = val; o.textContent = label; hotelSel.appendChild(o); });
+  }
+
+  // ── Dodatkowe atrakcje z maili (VI 2026) ──
+  if (presetSel) {
+    const grMail = document.createElement('optgroup');
+    grMail.label = 'Pieniny / Zagranica (z maili 2026)';
+    [
+      ['Spływ Dunajcem (Flisacy)|117|PLN', 'Spływ Dunajcem — 117 zł/os (113 niepełnospr.)'],
+      ['Przewodnik Warszawa (ryczałt/gr)|310|PLN', 'Przewodnik Warszawa MN — 310 zł/gr (ustaw os=1)'],
+      ['Barcelona — wycieczka fakultatywna|60|EUR', 'Barcelona — wycieczka — 60 EUR/os'],
+    ].forEach(([val, label]) => { const o = document.createElement('option'); o.value = val; o.textContent = label; grMail.appendChild(o); });
+    presetSel.appendChild(grMail);
+  }
+
+  console.log('✅ Patch zastosowany: rozszerzone kierunki i atrakcje z Google Drive');
+})();
+</script>
+
+<script>
+// ====== NOWE ATRAKCJE z kalendarza 2026 ======
+(function() {
+  const presetSel = document.getElementById('preset-atrakcja');
+  if(!presetSel) return;
+
+  const grWNowe = document.createElement('optgroup');
+  grWNowe.label = 'Warszawa – dodatkowe';
+  [['Smart Kids City Warszawa|69|PLN','Smart Kids City — 69 zł/os'],
+   ['Disco Show Warszawa|60|PLN','Disco Show Warszawa — 60 zł/os'],
+   ['Planetarium Warszawa|20|PLN','Planetarium Warszawa — 20 zł/os'],
+  ].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;grWNowe.appendChild(o);});
+  presetSel.appendChild(grWNowe);
+
+  const grLNowe = document.createElement('optgroup');
+  grLNowe.label = 'Lublin – dodatkowe';
+  [['Farma Iluzji|45|PLN','Farma Iluzji — 45 zł/os'],
+   ['Pigcasso Lublin|35|PLN','Pigcasso Lublin — 35 zł/os'],
+   ['Anderssen Lublin|40|PLN','Anderssen (teatr lalek) — 40 zł/os'],
+   ['Wioska Indiańska|40|PLN','Wioska Indiańska — 40 zł/os'],
+  ].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;grLNowe.appendChild(o);});
+  presetSel.appendChild(grLNowe);
+
+  const grPrzyr = document.createElement('optgroup');
+  grPrzyr.label = 'Przyroda i aktywne';
+  [['Jaskinia Raj|30|PLN','Jaskinia Raj — 30 zł/os'],
+   ['Las Odkrywców|35|PLN','Las Odkrywców — 35 zł/os'],
+   ['Wioska Frajdy|40|PLN','Wioska Frajdy — 40 zł/os'],
+   ['Magiczne Ogrody|40|PLN','Magiczne Ogrody — 40 zł/os'],
+   ['Pieniny rejs Dunajcem|75|PLN','Pieniny – rejs Dunajcem — 75 zł/os'],
+   ['Orle Gniazda zamki|20|PLN','Orle Gniazda – zamki — 20 zł/os'],
+  ].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;grPrzyr.appendChild(o);});
+  presetSel.appendChild(grPrzyr);
+})();
+
+// ====== ZAPISYWANIE KALKULACJI ======
+(function() {
+  function getSaved(){try{return JSON.parse(localStorage.getItem('dartur_saved'))||[];}catch(e){return [];}}
+
+  function renderSavedList(){
+    const list=document.getElementById('saved-list');
+    if(!list)return;
+    const saved=getSaved();
+    if(!saved.length){list.innerHTML='<div style="font-size:11px;color:rgba(247,243,237,0.35);text-align:center;padding:8px">Brak zapisanych kalkulacji</div>';return;}
+    list.innerHTML=saved.map(item=>`
+      <div style="background:rgba(255,255,255,0.06);border-radius:7px;padding:8px 10px;margin-bottom:5px;display:flex;align-items:center;gap:6px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;color:var(--cream);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.name}</div>
+          <div style="font-size:10px;color:rgba(247,243,237,0.4)">${item.date}</div>
+        </div>
+        <button onclick="loadCalc(${item.id})" style="background:var(--gold);color:var(--navy);border:none;border-radius:5px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer">Wczytaj</button>
+        <button onclick="deleteCalc(${item.id})" style="background:rgba(192,57,43,0.3);color:#f5a5a5;border:none;border-radius:5px;padding:4px 7px;font-size:11px;cursor:pointer">✕</button>
+      </div>`).join('');
+  }
+
+  function gatherState(){
+    const ids=['klient','zamawiajacy','kontakt','miasto','kierunek','kierunek-custom','data-od','data-do','termin-opis','oferta-wazna',
+      'uczestnicy','opiekunowie','pilot-os','pilot-imie','kurs-eur','marza','marza-typ','marza-kwota','vat-wlaczony',
+      'transport-staly','km','km-stawka','km-zakl','transport-kwota','drogi','parkingi',
+      'ma-kierowca2','kierowca2-koszt','kierowca2-dni',
+      'chce-umowe','ma-samolot','samolot-kwota','ma-nocleg','noclegi-ile','nocleg-waluta',
+      'taksa','taksa-os','sluchawki','sluchawki-dni','ma-przewodnik','przewodnik-opis',
+      'ubezp-pl','ubezp-zagr','gadzet1-cena','gadzet1-szt','gadzet2-cena','gadzet2-szt',
+      'ksiegowa','tfg','tfp','korekta-os','zaliczka','notatki'];
+    const s={};
+    ids.forEach(id=>{const el=document.getElementById(id);if(!el)return;s[id]=el.type==='checkbox'?el.checked:el.value;});
+    s.attractions=JSON.parse(JSON.stringify(attractions));
+    s.uslugi=JSON.parse(JSON.stringify(uslugi));
+    s.rooms=JSON.parse(JSON.stringify(rooms));
+    s.pilotDni=JSON.parse(JSON.stringify(pilotDni));
+    return s;
+  }
+
+  function applyState(s){
+    Object.keys(s).forEach(id=>{
+      if(['attractions','uslugi','rooms','pilotDni'].includes(id))return;
+      const el=document.getElementById(id);
+      if(!el)return;
+      if(el.type==='checkbox')el.checked=s[id]; else el.value=s[id];
+    });
+    attractions=s.attractions||[]; renderAttractions();
+    uslugi=s.uslugi||[]; renderUslugi();
+    rooms=s.rooms||[]; renderRooms();
+    pilotDni=s.pilotDni||[]; renderPilotDni();
+    onKierunekChange(); onTransportToggle(); onNoclegToggle();
+    if(s['ma-samolot'])document.getElementById('samolot-block').style.display='';
+    calc();
+  }
+
+  window.saveCalc=function(){
+    const name=document.getElementById('save-name').value.trim();
+    if(!name){alert('Wpisz nazwę kalkulacji!');return;}
+    const saved=getSaved();
+    saved.unshift({id:Date.now(),name,date:new Date().toLocaleDateString('pl-PL'),state:gatherState()});
+    if(saved.length>30)saved.pop();
+    localStorage.setItem('dartur_saved',JSON.stringify(saved));
+    document.getElementById('save-name').value='';
+    renderSavedList();
+    const btn=document.querySelector('[onclick="saveCalc()"]');
+    if(btn){btn.textContent='✅ Zapisano!';setTimeout(()=>{btn.textContent='💾 Zapisz';},2000);}
+  };
+
+  window.loadCalc=function(id){
+    const item=getSaved().find(x=>x.id===id);
+    if(!item)return;
+    if(!confirm('Wczytać "'+item.name+'"? Obecne dane zostaną zastąpione.'))return;
+    applyState(item.state);
+  };
+
+  window.deleteCalc=function(id){
+    localStorage.setItem('dartur_saved',JSON.stringify(getSaved().filter(x=>x.id!==id)));
+    renderSavedList();
+  };
+
+  // Dodaj sekcję do sidebar po załadowaniu
+  window.addEventListener('load',function(){
+    const sidebar=document.querySelector('.sidebar');
+    if(!sidebar)return;
+    const div=document.createElement('div');
+    div.innerHTML=`
+      <div class="divider"></div>
+      <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">💾 Zapisane kalkulacje</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input type="text" id="save-name" placeholder="Nazwa (np. SP3 Wrocław)" style="flex:1;font-size:12px;padding:7px 10px;border-radius:7px;border:1.5px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:var(--cream)">
+        <button onclick="saveCalc()" style="background:var(--gold);color:var(--navy);border:none;border-radius:7px;padding:7px 12px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer">💾 Zapisz</button>
+      </div>
+      <div id="saved-list"></div>
+    `;
+    sidebar.appendChild(div);
+    renderSavedList();
+  });
+})();
+</script>

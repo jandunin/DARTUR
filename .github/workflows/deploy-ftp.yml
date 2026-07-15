@@ -1,0 +1,44 @@
+name: Deploy kalkulator na FTP (darturlublin.pl)
+
+# Wysyła kalkulator na serwer FTP automatycznie po każdej zmianie pliku
+# w folderze kalkulator/ na gałęzi main. Można też odpalić ręcznie:
+# zakładka „Actions" → „Deploy kalkulator na FTP" → „Run workflow".
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'kalkulator/**'
+  workflow_dispatch:
+
+jobs:
+  ftp-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pobierz pliki repo
+        uses: actions/checkout@v4
+
+      - name: Wyślij kalkulator na FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: 195.78.67.59
+          username: partech
+          # HASŁO NIE jest w kodzie — dodaj je w GitHub jako sekret FTP_PASSWORD
+          # (Settings → Secrets and variables → Actions → New repository secret).
+          password: ${{ secrets.FTP_PASSWORD }}
+
+          # Protokół: 'ftp' = jak w Twoim linku (hasło leci otwartym tekstem).
+          # Jeśli hosting wspiera szyfrowanie, zmień na 'ftps' (bezpieczniej).
+          protocol: ftp
+
+          # CO wysyłamy: tylko folder z kalkulatorem.
+          local-dir: ./kalkulator/
+
+          # DOKĄD na serwerze — ⚠️ POTWIERDŹ TĘ ŚCIEŻKĘ przy pierwszym uruchomieniu.
+          # Wgrywamy do osobnego PODFOLDERU „kalkulator", żeby NIE dotykać WordPressa.
+          # Docelowy adres: https://darturlublin.pl/kalkulator/dartur-kalkulator.html
+          # Jeśli po 1. uruchomieniu plik trafi w złe miejsce — popraw tę linię
+          # (np. na „./public_html/kalkulator/" albo „./kalkulator/").
+          server-dir: ./domains/darturlublin.pl/public_html/kalkulator/
+
+          # Bezpieczeństwo: NIE czyści serwera — wgrywa tylko zmienione pliki.
+          dangerous-clean-slate: false

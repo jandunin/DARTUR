@@ -1,0 +1,13 @@
+# ── DARTUR — repo publikuje TYLKO kalkulator HTML + workflow ──
+# Skrypty .gs zawierają klucz API (sk-ant-...) i NIE mogą trafić do repo.
+# Dokumenty, sandbox, mastery — też zostają lokalnie.
+#
+# Zasada: domyślnie ignorujemy WSZYSTKO, a poniżej wyjątkami wpuszczamy
+# tylko to, co ma być publiczne.
+
+/*
+
+!/.gitignore
+!/README.md
+!/.github/
+!/kalkulator/
