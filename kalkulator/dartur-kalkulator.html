@@ -518,6 +518,10 @@
           <label class="toggle"><input type="checkbox" id="chce-umowe" onchange="calc()"><span class="slider"></span></label>
           <span class="toggle-label">Utwórz też umowę (dla 1-dniowych; wielodniowe zawsze mają umowę)</span>
         </div>
+        <div class="toggle-row" style="margin-top:4px;margin-bottom:8px">
+          <label class="toggle"><input type="checkbox" id="samolot-lista" onchange="calc()"><span class="slider"></span></label>
+          <span class="toggle-label">✈️ Wycieczka samolotowa — lista uczestników z danymi z dokumentu podróży (drugie imię, nr i ważność dokumentu, telefon, e-mail)</span>
+        </div>
         <div class="field-row-3">
           <div class="field">
             <label>Uczniowie / płacący</label>
@@ -2625,7 +2629,8 @@ function generateGoogleSheet() {
       pilotImie:   (document.getElementById('pilot-imie')||{}).value || '',
       nOpiek:      parseInt((document.getElementById('opiekunowie')||{}).value)||0,
       dni:         terminOpis ? '' : getDni(),
-      chceUmowe:   !!(document.getElementById('chce-umowe')||{}).checked
+      chceUmowe:   !!(document.getElementById('chce-umowe')||{}).checked,
+      samolot:     !!(document.getElementById('samolot-lista')||{}).checked
     }, formuly, uklad);
   } else {
     alert('⚠️ Web app nie jest skonfigurowany (WEBAPP_URL_CENTRUM).\nWdróż DARTUR_centrum.gs jako aplikację internetową i wklej URL /exec — wtedy „Utwórz folder / kalkulację" zapisze wszystko wprost do „Oferty".');
@@ -2654,7 +2659,7 @@ function zapiszKalkulacjeDoDrive(rows, nazwa, meta, formuly, uklad) {
     cenaOs: meta.cenaOs, nOs: meta.nOs, zaliczka: meta.zaliczka || 0,
     zamawiajacy: meta.zamawiajacy || '', kontakt: meta.kontakt || '', miasto: meta.miasto || '',
     pilotImie: meta.pilotImie || '',
-    nOpiek: meta.nOpiek || 0, dni: meta.dni || 0, chceUmowe: !!meta.chceUmowe,
+    nOpiek: meta.nOpiek || 0, dni: meta.dni || 0, chceUmowe: !!meta.chceUmowe, samolot: !!meta.samolot,
     rows: rows, formuly: formuly || [], uklad: uklad || {}
   };
   fetch(WEBAPP_URL_CENTRUM, {
@@ -2923,7 +2928,7 @@ init();
       'uczestnicy','opiekunowie','pilot-os','pilot-imie','kurs-eur','marza','marza-typ','marza-kwota','vat-wlaczony',
       'transport-staly','km','km-stawka','km-zakl','transport-kwota','drogi','parkingi',
       'ma-kierowca2','kierowca2-koszt','kierowca2-dni',
-      'chce-umowe','ma-samolot','samolot-kwota','ma-nocleg','noclegi-ile','nocleg-waluta',
+      'chce-umowe','samolot-lista','ma-samolot','samolot-kwota','ma-nocleg','noclegi-ile','nocleg-waluta',
       'taksa','taksa-os','sluchawki','sluchawki-dni','ma-przewodnik','przewodnik-opis',
       'ubezp-pl','ubezp-zagr','gadzet1-cena','gadzet1-szt','gadzet2-cena','gadzet2-szt',
       'ksiegowa','tfg','tfp','korekta-os','zaliczka','notatki'];
