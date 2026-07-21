@@ -202,6 +202,10 @@
   }
   .room-row select { font-size: 12px; padding: 6px 2px; }
   .room-header span { font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
+  /* tryb „różne obiekty" — dodatkowa kolumna Obiekt na początku */
+  .room-row.multi, .room-header.multi {
+    grid-template-columns: 88px 1.1fr 42px 38px 40px 62px 66px 50px 26px;
+  }
 
   /* TOGGLE CHECKBOX */
   .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -707,13 +711,17 @@
               </select>
             </div>
           </div>
+          <div class="toggle-row" style="margin-bottom:12px">
+            <label class="toggle"><input type="checkbox" id="nocleg-multi" onchange="onNoclegMultiToggle()"><span class="slider"></span></label>
+            <span class="toggle-label">Różne obiekty na różne dni (np. Hotel A – 2 noce, Hotel B – 1 noc)</span>
+          </div>
           <div class="field" style="margin-bottom:10px">
             <label>Dodaj hotel z listy (auto-cena)</label>
             <select id="preset-hotel" onchange="addRoomPreset()">
               <option value="">— wybierz hotel z listy —</option>
             </select>
           </div>
-          <div class="room-header">
+          <div class="room-header" id="rooms-header">
             <span>Hotel / typ pokoju</span>
             <span>Os./pok.</span>
             <span>Pok.</span>
@@ -727,6 +735,7 @@
             <!-- wypełniane przez JS -->
           </div>
           <button class="btn-add" onclick="addRoom()">＋ Dodaj typ pokoju</button>
+          <div id="noclegi-wg-obiektow" style="margin-top:12px"></div>
           <div id="taksa-block" style="margin-top:14px">
             <div class="field-row">
               <div class="field">
@@ -1260,14 +1269,17 @@ function onNoclegToggle() {
 }
 function onNoclegWaluta() { calc(); }
 
-function addRoom(typ='2-osobowy Hotel A', os=2, ile=5, cena=220, noc=2, taksa=null, tryb='pokoj') {
+function addRoom(typ='2-osobowy Hotel A', os=2, ile=5, cena=220, noc=2, taksa=null, tryb='pokoj', obiekt='') {
   const id = Date.now() + Math.random();
   // domyślna taksa dla nowego noclegu = wartość z pola „domyślna taksa" (w walucie noclegu)
   const taksaDef = (taksa != null) ? taksa : (parseFloat((document.getElementById('taksa')||{}).value)||0);
   // tryb: 'pokoj' = cena za pokój (cena × pokoje); 'osoba' = cena za osobę (cena × osoby)
-  rooms.push({id, typ, os, ile, cena, noc, taksa: taksaDef, tryb});
+  // obiekt: nazwa hotelu/obiektu (tryb „różne obiekty")
+  rooms.push({id, typ, os, ile, cena, noc, taksa: taksaDef, tryb, obiekt});
   renderRooms(); calc();
 }
+function noclegMultiOn() { const el = document.getElementById('nocleg-multi'); return !!(el && el.checked); }
+function onNoclegMultiToggle() { renderRooms(); calc(); }
 // Dodaj nocleg z listy gotowych hoteli (auto-cena + tryb + waluta). Wartość: "typ|cena|tryb|waluta".
 function addRoomPreset() {
   const sel = document.getElementById('preset-hotel');
@@ -1291,31 +1303,66 @@ function removeRoom(id) {
   renderRooms(); calc();
 }
 function renderRooms() {
+  const multi = noclegMultiOn();
+  // Nagłówek zależny od trybu
+  const hEl = document.getElementById('rooms-header');
+  if (hEl) {
+    hEl.className = multi ? 'room-header multi' : 'room-header';
+    hEl.innerHTML = multi
+      ? '<span>Obiekt/hotel</span><span>Typ pokoju</span><span>Os./pok.</span><span>Pok.</span><span>Noce</span><span>Cena/noc</span><span>Licz wg</span><span>Taksa/os</span><span></span>'
+      : '<span>Hotel / typ pokoju</span><span>Os./pok.</span><span>Pok.</span><span>Noce</span><span>Cena/noc</span><span>Licz wg</span><span>Taksa/os</span><span></span>';
+  }
   const list = document.getElementById('rooms-list');
   list.innerHTML = '';
   rooms.forEach(r => {
     const div = document.createElement('div');
-    div.className = 'room-row';
-    div.innerHTML = `
-      <input type="text" value="${r.typ}" onchange="updateRoom(${r.id},'typ',this.value)" placeholder="np. 2-os Hotel Panorama">
+    div.className = multi ? 'room-row multi' : 'room-row';
+    const wsp = `
       <input type="number" value="${r.os}" min="1" max="10" onchange="updateRoom(${r.id},'os',+this.value)" title="Osób/pokój">
       <input type="number" value="${r.ile}" min="0" onchange="updateRoom(${r.id},'ile',+this.value)" title="Pokoi">
-      <input type="number" value="${r.noc||1}" min="1" onchange="updateRoom(${r.id},'noc',+this.value)" title="Noce">
+      <input type="number" value="${r.noc||1}" min="1" onchange="updateRoom(${r.id},'noc',+this.value)" title="Noce w tym obiekcie">
       <input type="number" value="${r.cena}" min="0" onchange="updateRoom(${r.id},'cena',+this.value)" title="Cena/noc — za pokój albo za osobę (wybierz w kolumnie „Licz wg")">
       <select onchange="updateRoom(${r.id},'tryb',this.value)" title="Jak liczyć cenę: za pokój (cena × pokoje) czy za osobę (cena × osoby)">
         <option value="pokoj" ${(r.tryb||'pokoj')==='pokoj'?'selected':''}>za pokój</option>
         <option value="osoba" ${r.tryb==='osoba'?'selected':''}>za osobę</option>
       </select>
       <input type="number" value="${r.taksa||0}" min="0" step="0.50" onchange="updateRoom(${r.id},'taksa',+this.value)" title="Taksa klimatyczna za osobę za dobę (w walucie noclegu; 0 = hotel bez taksy)">
-      <button class="btn-del" onclick="removeRoom(${r.id})">✕</button>
-    `;
+      <button class="btn-del" onclick="removeRoom(${r.id})">✕</button>`;
+    div.innerHTML = multi
+      ? `<input type="text" value="${r.obiekt||''}" onchange="updateRoom(${r.id},'obiekt',this.value)" placeholder="Hotel/obiekt">
+         <input type="text" value="${r.typ}" onchange="updateRoom(${r.id},'typ',this.value)" placeholder="np. 2-osobowy">${wsp}`
+      : `<input type="text" value="${r.typ}" onchange="updateRoom(${r.id},'typ',this.value)" placeholder="np. 2-os Hotel Panorama">${wsp}`;
     list.appendChild(div);
   });
+  renderNoclegiWgObiektow(multi);
 }
 function updateRoom(id, field, val) {
   const r = rooms.find(x=>x.id===id);
   if(r) r[field] = val;
+  if (field === 'obiekt' || field === 'noc' || field === 'typ') renderNoclegiWgObiektow(noclegMultiOn());
   calc();
+}
+// Podgląd noclegów pogrupowanych po obiektach (tryb „różne obiekty")
+function renderNoclegiWgObiektow(multi) {
+  const box = document.getElementById('noclegi-wg-obiektow');
+  if (!box) return;
+  if (!multi || !rooms.length) { box.innerHTML = ''; return; }
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const grupy = {};
+  rooms.forEach(r => {
+    const ob = (r.obiekt||'').trim() || '(obiekt bez nazwy)';
+    (grupy[ob] = grupy[ob] || []).push(r);
+  });
+  let html = '<div style="font-size:12px;font-weight:700;color:#1a3a6b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">🏨 Noclegi wg obiektów</div>';
+  Object.keys(grupy).forEach(ob => {
+    const rs = grupy[ob];
+    const noce = Math.max.apply(null, rs.map(r => parseInt(r.noc)||0));
+    html += '<div style="margin-bottom:6px"><b>'+esc(ob)+'</b> <span style="color:#666">('+noce+' '+(noce===1?'noc':'noce/nocy')+')</span>' +
+      '<div style="padding-left:12px;color:#333;line-height:1.6">' +
+      rs.map(r => (parseInt(r.ile)||0)+'× '+esc(r.typ||'pokój')+' — '+(parseFloat(r.cena)||0)+'/noc').join('<br>') +
+      '</div></div>';
+  });
+  box.innerHTML = html;
 }
 
 // ====== WYŻYWIENIE ======
@@ -2499,7 +2546,8 @@ function generateGoogleSheet() {
       const liczba = perOs ? (rm.ile||0)*(rm.os||0) : (rm.ile||0);   // osoby albo pokoje
       let val = liczba*(rm.cena||0)*noc; if(eur) val*=kurs;
       const opis = (perOs?'osoby × cena/os × noce':'pokoje × cena/pok × noce') + (eur?' (EUR → zagranica)':'');
-      const r = cr('Nocleg: '+(rm.typ||'pokój'), val, opis, liczba, rm.cena||0, noc);
+      const etykietaN = 'Nocleg: ' + ((rm.obiekt||'').trim() ? (rm.obiekt.trim()+' — ') : '') + (rm.typ||'pokój');
+      const r = cr(etykietaN, val, opis, liczba, rm.cena||0, noc);
       fadd('B'+r, eur ? '=D'+r+'*E'+r+'*F'+r+'*'+KURS : '=D'+r+'*E'+r+'*F'+r);
       if ((rm.taksa||0)>0) {
         let tv = rm.taksa*taksaOsC*noc; if(eur) tv*=kurs;
@@ -2951,7 +2999,7 @@ init();
       'uczestnicy','opiekunowie','pilot-os','pilot-imie','kurs-eur','marza','marza-typ','marza-kwota','vat-wlaczony',
       'transport-staly','km','km-stawka','km-zakl','transport-kwota','drogi','parkingi',
       'ma-kierowca2','kierowca2-koszt','kierowca2-dni',
-      'chce-umowe','samolot-lista','ma-samolot','samolot-kwota','ma-nocleg','noclegi-ile','nocleg-waluta',
+      'chce-umowe','samolot-lista','ma-samolot','samolot-kwota','ma-nocleg','nocleg-multi','noclegi-ile','nocleg-waluta',
       'taksa','taksa-os','sluchawki','sluchawki-dni','ma-przewodnik','przewodnik-opis',
       'ubezp-pl','ubezp-zagr','gadzet1-cena','gadzet1-szt','gadzet2-cena','gadzet2-szt',
       'ksiegowa','tfg','tfp','korekta-os','zaliczka','notatki'];
