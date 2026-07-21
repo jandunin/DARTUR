@@ -130,7 +130,7 @@
   /* ATRAKCJE */
   .attraction-row {
     display: grid;
-    grid-template-columns: 1fr 90px 70px 75px 34px;
+    grid-template-columns: 1fr 82px 62px 66px 44px 34px;
     gap: 8px;
     align-items: center;
     margin-bottom: 8px;
@@ -178,7 +178,7 @@
   }
   .attractions-header {
     display: grid;
-    grid-template-columns: 1fr 90px 70px 75px 34px;
+    grid-template-columns: 1fr 82px 62px 66px 44px 34px;
     gap: 8px;
     margin-bottom: 4px;
   }
@@ -924,13 +924,15 @@
           <span>Cena/os</span>
           <span>Waluta</span>
           <span>Ile osób</span>
+          <span>Dzień</span>
           <span></span>
         </div>
         <div id="attractions-list"></div>
         <button class="btn-add" onclick="addAttraction()">＋ Dodaj własną atrakcję</button>
         <div class="info-note" style="margin-top:8px">
-          "Ile osób" — wpisz ręcznie żeby uwzględnić gratisy, pilota, opiekunów. <strong>0 = wszyscy uczestnicy + opiekunowie + pilot.</strong>
+          „Dzień" — którego dnia wycieczki jest atrakcja (1, 2, 3…). „Ile osób" — wpisz ręcznie żeby uwzględnić gratisy, pilota, opiekunów. <strong>0 = wszyscy uczestnicy + opiekunowie + pilot.</strong>
         </div>
+        <div id="atrakcje-wg-dni" style="margin-top:12px"></div>
       </div>
     </div>
 
@@ -1483,13 +1485,13 @@ function addPreset() {
   const val = sel.value;
   if(!val) return;
   const [nazwa, cena, waluta] = val.split('|');
-  addAttractionItem(nazwa, parseFloat(cena), waluta);
+  addAttractionItem(nazwa, parseFloat(cena), waluta, 0, 1);
   sel.value = '';
 }
-function addAttraction() { addAttractionItem('', 0, 'PLN', 0); }
-function addAttractionItem(nazwa='', cena=0, waluta='PLN', os=0) {
+function addAttraction() { addAttractionItem('', 0, 'PLN', 0, 1); }
+function addAttractionItem(nazwa='', cena=0, waluta='PLN', os=0, dzien=1) {
   const id = Date.now() + Math.random();
-  attractions.push({id, nazwa, cena, waluta, os});
+  attractions.push({id, nazwa, cena, waluta, os, dzien});
   renderAttractions(); calc();
 }
 function removeAttraction(id) {
@@ -1510,15 +1512,36 @@ function renderAttractions() {
         <option value="EUR" ${a.waluta==='EUR'?'selected':''}>EUR</option>
       </select>
       <input type="number" value="${a.os||0}" min="0" placeholder="0=wszyscy" onchange="updateAttr(${a.id},'os',+this.value)" title="0=wszyscy uczestnicy+opiekunowie+pilot">
+      <input type="number" value="${a.dzien||1}" min="1" onchange="updateAttr(${a.id},'dzien',+this.value)" title="Dzień wycieczki (1, 2, 3…)">
       <button class="btn-del" onclick="removeAttraction(${a.id})">✕</button>
     `;
     list.appendChild(div);
   });
+  renderAtrakcjeWgDni();
 }
 function updateAttr(id, field, val) {
   const a = attractions.find(x=>x.id===id);
   if(a) a[field] = val;
+  renderAtrakcjeWgDni();
   calc();
+}
+// Podgląd atrakcji pogrupowanych po dniach (żeby widać było, czy nic nie umknęło)
+function renderAtrakcjeWgDni() {
+  const box = document.getElementById('atrakcje-wg-dni');
+  if (!box) return;
+  const naz = attractions.filter(a => (a.nazwa||'').trim());
+  if (!naz.length) { box.innerHTML = ''; return; }
+  const byDay = {};
+  naz.forEach(a => { const d = parseInt(a.dzien)||1; (byDay[d] = byDay[d] || []).push(a.nazwa.trim()); });
+  const dni = Object.keys(byDay).map(Number).sort((x,y)=>x-y);
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const liter = 'abcdefghijklmnopqrstuwxyz';
+  let html = '<div style="font-size:12px;font-weight:700;color:#1a3a6b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">🗓️ Atrakcje wg dni</div>';
+  dni.forEach(d => {
+    html += '<div style="margin-bottom:6px"><b>Dzień '+d+'</b><div style="padding-left:12px;color:#333;line-height:1.6">' +
+      byDay[d].map((n,i)=> (liter[i]||'•')+') '+esc(n)).join('<br>') + '</div></div>';
+  });
+  box.innerHTML = html;
 }
 
 // ====== USŁUGI ZEWNĘTRZNE (poza atrakcjami) ======
@@ -2507,12 +2530,12 @@ function generateGoogleSheet() {
     fadd('B'+r, '=D'+r+'*E'+r);
   });
 
-  // ── ATRAKCJE (pozycja po pozycji; EUR → zagranica) ──
-  attractions.forEach(a => {
+  // ── ATRAKCJE (pozycja po pozycji, POSORTOWANE PO DNIACH; EUR → zagranica) ──
+  attractions.slice().sort((x,y)=>((x.dzien||1)-(y.dzien||1))).forEach(a => {
     const eur = a.waluta==='EUR';
     const oc = (a.os && a.os>0)?a.os:allOs;
     let val = (a.cena||0)*oc; if(eur) val*=kurs;
-    const r=cr('Atrakcja: '+(a.nazwa||'bilet'), val, eur?'cena × osoby (EUR → zagranica)':'cena × osoby', oc, a.cena||0);
+    const r=cr('Atrakcja (Dzień '+(a.dzien||1)+'): '+(a.nazwa||'bilet'), val, eur?'cena × osoby (EUR → zagranica)':'cena × osoby', oc, a.cena||0);
     fadd('B'+r, eur ? '=D'+r+'*E'+r+'*'+KURS : '=D'+r+'*E'+r);
   });
 
