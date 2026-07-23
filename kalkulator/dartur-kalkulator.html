@@ -743,6 +743,9 @@
             <!-- wypełniane przez JS -->
           </div>
           <button class="btn-add" onclick="addRoom()">＋ Dodaj typ pokoju</button>
+          <div class="info-note" style="margin-top:8px">Kolumna <strong>„Licz wg"</strong> decyduje, co się mnoży:<br>
+            • <strong>za osobę</strong> → osoby × noce × cena (liczba pokoi nie ma znaczenia — pole wyszarzone; 0 osób = wszyscy uczestnicy z opiekunami)<br>
+            • <strong>za pokój</strong> → pokoje × noce × cena (liczba osób nie ma znaczenia — pole wyszarzone)</div>
           <div id="noclegi-wg-obiektow" style="margin-top:12px"></div>
           <div id="taksa-block" style="margin-top:14px">
             <div class="field-row">
@@ -1312,9 +1315,14 @@ function _wstawNocleg(typ, cena, tryb, waluta) {
   if (wsel && waluta) { wsel.value = waluta; if (typeof onNoclegWaluta === 'function') onNoclegWaluta(); }
   const noc = parseInt(document.getElementById('noclegi-ile').value) || 1;
   const obiekt = noclegMultiOn() ? typ : '';   // w trybie „różne obiekty" nazwa trafia do kolumny Obiekt
-  // tryb 'osoba' (HB/os) → os=1, ile = liczba osób (popraw ręcznie); 'pokoj' → standardowo
-  if (tryb === 'osoba') addRoom(typ, 1, 10, cena, noc, 0, 'osoba', obiekt);
-  else                  addRoom(typ, 2, 5,  cena, noc, 0, 'pokoj', obiekt);
+  // 'osoba' → liczba OSÓB z formularza (uczestnicy + opiekunowie), pokoje bez znaczenia
+  if (tryb === 'osoba') {
+    const osoby = (parseInt((document.getElementById('uczestnicy')||{}).value)||0)
+                + (parseInt((document.getElementById('opiekunowie')||{}).value)||0);
+    addRoom(typ, osoby || 0, 1, cena, noc, 0, 'osoba', obiekt);
+  } else {
+    addRoom(typ, 2, 5, cena, noc, 0, 'pokoj', obiekt);
+  }
 }
 
 // Dodaj obiekt, którego nie ma na liście — pyta o nazwę i cenę, dodaje nocleg i ZAPAMIĘTUJE hotel.
@@ -1373,12 +1381,20 @@ function renderRooms() {
   }
   const list = document.getElementById('rooms-list');
   list.innerHTML = '';
+  _migrujPokojeOsoby();
   rooms.forEach(r => {
     const div = document.createElement('div');
     div.className = multi ? 'room-row multi' : 'room-row';
+    // „za osobę" → mnoży pole OSÓB (pokoje wyszarzone); „za pokój" → mnoży pole POKOI (osoby wyszarzone)
+    const perOs = (r.tryb === 'osoba');
+    const szary = 'opacity:0.4;background:#f3f4f6';
     const wsp = `
-      <input type="number" value="${r.os}" min="1" max="10" onchange="updateRoom(${r.id},'os',+this.value)" title="Osób/pokój">
-      <input type="number" value="${r.ile}" min="0" onchange="updateRoom(${r.id},'ile',+this.value)" title="Pokoi">
+      <input type="number" value="${r.os}" min="0" onchange="updateRoom(${r.id},'os',+this.value)"
+             title="${perOs?'Liczba OSÓB — cena za osobę × osoby × noce (0 = wszyscy uczestnicy)':'Osób w pokoju — przy cenie za pokój NIE wpływa na kwotę'}"
+             style="${perOs?'':szary}">
+      <input type="number" value="${r.ile}" min="0" onchange="updateRoom(${r.id},'ile',+this.value)"
+             title="${perOs?'Liczba pokoi — przy cenie za osobę NIE wpływa na kwotę':'Liczba POKOI — cena za pokój × pokoje × noce'}"
+             style="${perOs?szary:''}">
       <input type="number" value="${r.noc||1}" min="1" onchange="updateRoom(${r.id},'noc',+this.value)" title="Noce w tym obiekcie">
       <input type="number" value="${r.cena}" min="0" onchange="updateRoom(${r.id},'cena',+this.value)" title="Cena/noc — za pokój albo za osobę (wybierz w kolumnie „Licz wg")">
       <select onchange="updateRoom(${r.id},'tryb',this.value)" title="Jak liczyć cenę: za pokój (cena × pokoje) czy za osobę (cena × osoby)">
@@ -1398,8 +1414,16 @@ function renderRooms() {
 function updateRoom(id, field, val) {
   const r = rooms.find(x=>x.id===id);
   if(r) r[field] = val;
+  if (field === 'tryb') { renderRooms(); calc(); return; }   // przełącz aktywne pole (osoby ↔ pokoje)
   if (field === 'obiekt' || field === 'noc' || field === 'typ') renderNoclegiWgObiektow(noclegMultiOn());
   calc();
+}
+// Stare wiersze „za osobę" trzymały liczbę osób w kolumnie POKOI (os=1, pok=10).
+// Teraz osoby są w kolumnie osób — przepisujemy raz, żeby kwoty się nie rozjechały.
+function _migrujPokojeOsoby() {
+  rooms.forEach(r => {
+    if (r.tryb === 'osoba' && (r.os||0) <= 1 && (r.ile||0) > 1) { r.os = r.ile; r.ile = 1; }
+  });
 }
 // Podgląd noclegów pogrupowanych po obiektach (tryb „różne obiekty")
 function renderNoclegiWgObiektow(multi) {
@@ -1841,8 +1865,9 @@ function calcTotal(nOs) {
     const taksaOsCount = taksaOs > 0 ? taksaOs : allOs;
     rooms.forEach(r => {
       const noc = r.noc || parseInt(document.getElementById('noclegi-ile').value)||1;
-      // tryb 'osoba' = cena za osobę (cena × osoby × pokoje); 'pokoj' = cena za pokój (cena × pokoje)
-      const liczba = (r.tryb==='osoba') ? (r.ile||0)*(r.os||0) : (r.ile||0);
+      // ZASADA: „za osobę" → OSOBY × noce × cena (pokoje nie mnożą)
+      //         „za pokój" → POKOJE × noce × cena (osoby nie mnożą)
+      const liczba = (r.tryb==='osoba') ? ((r.os||0) > 0 ? r.os : (nOs + opiek)) : (r.ile||0);
       let kwota = liczba * r.cena * noc;
       if(nocWaluta==='EUR') kwota *= kurs;
       noclegBaza += kwota;
@@ -2617,7 +2642,7 @@ function generateGoogleSheet() {
     rooms.forEach(rm => {
       const noc = rm.noc || gi('noclegi-ile') || 1;
       const perOs = (rm.tryb==='osoba');
-      const liczba = perOs ? (rm.ile||0)*(rm.os||0) : (rm.ile||0);   // osoby albo pokoje
+      const liczba = perOs ? (((rm.os||0) > 0) ? rm.os : (nOs + opiek)) : (rm.ile||0);   // osoby albo pokoje
       let val = liczba*(rm.cena||0)*noc; if(eur) val*=kurs;
       const opis = (perOs?'osoby × cena/os × noce':'pokoje × cena/pok × noce') + (eur?' (EUR → zagranica)':'');
       const etykietaN = 'Nocleg: ' + ((rm.obiekt||'').trim() ? (rm.obiekt.trim()+' — ') : '') + (rm.typ||'pokój');
