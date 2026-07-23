@@ -1285,18 +1285,65 @@ function addRoomPreset() {
   const sel = document.getElementById('preset-hotel');
   const v = sel.value;
   if (!v) return;
+  sel.value = '';
+  // „➕ Dodaj nowy obiekt" — hotel spoza listy (zapisuje się na przyszłość)
+  if (v === '__NOWY__') { dodajNowyObiekt(); return; }
   const [typ, cena, tryb, waluta] = v.split('|');
-  // włącz nocleg, jeśli wyłączony
+  _wstawNocleg(typ, parseFloat(cena) || 0, tryb, waluta);
+}
+
+// Wspólne wstawienie noclegu (z presetu albo nowego obiektu)
+function _wstawNocleg(typ, cena, tryb, waluta) {
   const chk = document.getElementById('ma-nocleg');
   if (chk && !chk.checked) { chk.checked = true; if (typeof onNoclegToggle === 'function') onNoclegToggle(); }
-  // ustaw walutę noclegu (EUR/PLN) wg presetu
   const wsel = document.getElementById('nocleg-waluta');
   if (wsel && waluta) { wsel.value = waluta; if (typeof onNoclegWaluta === 'function') onNoclegWaluta(); }
   const noc = parseInt(document.getElementById('noclegi-ile').value) || 1;
+  const obiekt = noclegMultiOn() ? typ : '';   // w trybie „różne obiekty" nazwa trafia do kolumny Obiekt
   // tryb 'osoba' (HB/os) → os=1, ile = liczba osób (popraw ręcznie); 'pokoj' → standardowo
-  if (tryb === 'osoba') addRoom(typ, 1, 10, parseFloat(cena) || 0, noc, 0, 'osoba');
-  else                  addRoom(typ, 2, 5,  parseFloat(cena) || 0, noc, 0, 'pokoj');
-  sel.value = '';
+  if (tryb === 'osoba') addRoom(typ, 1, 10, cena, noc, 0, 'osoba', obiekt);
+  else                  addRoom(typ, 2, 5,  cena, noc, 0, 'pokoj', obiekt);
+}
+
+// Dodaj obiekt, którego nie ma na liście — pyta o nazwę i cenę, dodaje nocleg i ZAPAMIĘTUJE hotel.
+function dodajNowyObiekt() {
+  const nazwa = (prompt('Nazwa obiektu / hotelu (np. Hotel Tajty Wilkasy):') || '').trim();
+  if (!nazwa) return;
+  const cenaTxt = (prompt('Cena za dobę (sama liczba), np. 190:') || '').replace(',', '.').trim();
+  const cena = parseFloat(cenaTxt) || 0;
+  const perOs = confirm('Czy ta cena jest ZA OSOBĘ?\n\nOK = za osobę (np. 190 zł/os HB)\nAnuluj = za pokój');
+  const tryb = perOs ? 'osoba' : 'pokoj';
+  const waluta = (document.getElementById('nocleg-waluta') || {}).value || 'PLN';
+  _wstawNocleg(nazwa, cena, tryb, waluta);
+  // zapisz na przyszłość (pojawi się w liście „Moje obiekty")
+  zapiszWlasnyHotel(nazwa + '|' + cena + '|' + tryb + '|' + waluta,
+                    nazwa + ' — ' + cena + ' ' + waluta + (perOs ? '/os' : '/pokój'));
+}
+
+// ── Własne (zapamiętane) obiekty noclegowe ──
+function wlasneHotele() {
+  try { return JSON.parse(localStorage.getItem('dartur_hotele') || '[]'); } catch (e) { return []; }
+}
+function zapiszWlasnyHotel(val, label) {
+  const arr = wlasneHotele();
+  if (!arr.some(h => h[0] === val)) {
+    arr.push([val, label]);
+    try { localStorage.setItem('dartur_hotele', JSON.stringify(arr)); } catch (e) {}
+  }
+  odswiezWlasneHotele();
+}
+function odswiezWlasneHotele() {
+  const sel = document.getElementById('preset-hotel');
+  if (!sel) return;
+  const stary = sel.querySelector('optgroup[data-wlasne="1"]');
+  if (stary) stary.remove();
+  const arr = wlasneHotele();
+  if (!arr.length) return;
+  const gr = document.createElement('optgroup');
+  gr.label = 'Moje obiekty (zapisane)';
+  gr.setAttribute('data-wlasne', '1');
+  arr.forEach(([v, l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; gr.appendChild(o); });
+  sel.appendChild(gr);
 }
 function removeRoom(id) {
   rooms = rooms.filter(r => r.id !== id);
@@ -2913,6 +2960,11 @@ init();
   // ── HOTELE z listy (auto-cena/tryb/waluta) — z realnych ofert (VI 2026) ──
   const hotelSel = document.getElementById('preset-hotel');
   if (hotelSel) {
+    // „➕ Dodaj nowy obiekt" — dla hoteli spoza listy (zapisuje się do „Moje obiekty")
+    const oNowy = document.createElement('option');
+    oNowy.value = '__NOWY__';
+    oNowy.textContent = '➕ Dodaj nowy obiekt (nie ma go na liście)…';
+    hotelSel.appendChild(oNowy);
     [
       ['Amalia Kudowa (HB)|190|osoba|PLN', 'Amalia Kudowa — 190 zł/os HB'],
       ['Zajazd Leśny Zwierzyniec (z posiłkami)|170|osoba|PLN', 'Zajazd Leśny Zwierzyniec — 170 zł/os'],
@@ -2921,6 +2973,8 @@ init();
       ['Barcelona Olympic 3* (HB)|36|osoba|EUR', 'Barcelona Olympic 3* — 36 EUR/os HB'],
       ['Barcelona — dopłata pokój 1-os|30|osoba|EUR', 'Barcelona — dopłata 1-os — 30 EUR/doba'],
     ].forEach(([val, label]) => { const o = document.createElement('option'); o.value = val; o.textContent = label; hotelSel.appendChild(o); });
+    // dopisz zapamiętane wcześniej własne obiekty
+    if (typeof odswiezWlasneHotele === 'function') odswiezWlasneHotele();
   }
 
   // ── Dodatkowe atrakcje z maili (VI 2026) ──
