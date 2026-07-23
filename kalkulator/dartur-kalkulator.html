@@ -777,13 +777,28 @@
             <span style="font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px">🗺️ Przewodnik (osobno)</span>
           </div>
           <div id="przewodnik-block" style="display:none">
-            <div id="przewodnik-dni-list"></div>
-            <button class="btn-add" onclick="addPilotDzien('przewodnik')">＋ Dodaj dzień przewodnika</button>
+            <div class="field" style="margin-bottom:10px">
+              <label>Jak rozliczasz przewodnika</label>
+              <select id="przewodnik-tryb" onchange="onPrzewodnikTryb()">
+                <option value="kwota">Kwota za całość (ryczałt)</option>
+                <option value="dni">Dniówki (stawka za każdy dzień)</option>
+              </select>
+            </div>
+            <div id="przewodnik-kwota-block">
+              <div class="field">
+                <label>Kwota za przewodnika (za całość)</label>
+                <input type="number" id="przewodnik-kwota" value="0" min="0" oninput="calc()">
+              </div>
+            </div>
+            <div id="przewodnik-dni-block" style="display:none">
+              <div id="przewodnik-dni-list"></div>
+              <button class="btn-add" onclick="addPilotDzien('przewodnik')">＋ Dodaj dzień przewodnika</button>
+            </div>
             <div class="field" style="margin-top:10px">
               <label>Opis — za co jest kwota przewodnika</label>
               <input type="text" id="przewodnik-opis" placeholder="np. przewodnik lokalny w Pradze — 2 wejścia + oprowadzanie" oninput="calc()">
             </div>
-            <div class="info-note" style="margin-top:8px">Przewodnik to osobna osoba od pilota — np. lokalny przewodnik w Pradze lub Barcelonie.</div>
+            <div class="info-note" style="margin-top:8px">Przewodnik to osobna osoba od pilota — np. lokalny przewodnik w Pradze lub Barcelonie. Domyślnie liczony <strong>ryczałtem za całość</strong> (nie dniówką).</div>
           </div>
         </div>
 
@@ -1565,6 +1580,16 @@ function updatePilotDzien(id, val) { updateDzien('pilot', id, val); }
 function onPrzewodnikToggle() {
   const ma = document.getElementById('ma-przewodnik').checked;
   document.getElementById('przewodnik-block').style.display = ma ? '' : 'none';
+  if (ma) { onPrzewodnikTryb(); return; }
+  calc();
+}
+// Przewodnik: ryczałt (kwota za całość) albo dniówki
+function onPrzewodnikTryb() {
+  const t = (document.getElementById('przewodnik-tryb')||{}).value || 'kwota';
+  const kb = document.getElementById('przewodnik-kwota-block');
+  const db = document.getElementById('przewodnik-dni-block');
+  if (kb) kb.style.display = (t === 'kwota') ? '' : 'none';
+  if (db) db.style.display = (t === 'dni')   ? '' : 'none';
   calc();
 }
 function onUbezpZagrToggle() {
@@ -1838,7 +1863,11 @@ function calcTotal(nOs) {
   // PILOT + PRZEWODNIK
   let pilotKoszt = pilotDni.reduce((s,p)=>s+p.stawka,0);
   const maPrzewodnik = document.getElementById('ma-przewodnik') && document.getElementById('ma-przewodnik').checked;
-  if(maPrzewodnik) pilotKoszt += przewodnikDni.reduce((s,p)=>s+p.stawka,0);
+  if(maPrzewodnik) {
+    const pTryb = (document.getElementById('przewodnik-tryb')||{}).value || 'kwota';
+    if (pTryb === 'dni') pilotKoszt += przewodnikDni.reduce((s,p)=>s+p.stawka,0);
+    else pilotKoszt += parseFloat((document.getElementById('przewodnik-kwota')||{}).value)||0;
+  }
 
   // SŁUCHAWKI — osobna sekcja
   let sluchKoszt = 0;
@@ -2606,9 +2635,15 @@ function generateGoogleSheet() {
 
   // ── PILOT / PRZEWODNIK (dzień po dniu) ──
   pilotDni.forEach((p,i)=> cr('Pilot — dzień '+(i+1), p.stawka, 'stawka dzienna pilota'));
-  if (gc('ma-przewodnik') && typeof przewodnikDni!=='undefined') {
-    const pOpis = ((document.getElementById('przewodnik-opis')||{}).value || '').trim() || 'stawka dzienna przewodnika';
-    przewodnikDni.forEach((p,i)=> cr('Przewodnik — dzień '+(i+1), p.stawka, pOpis));
+  if (gc('ma-przewodnik')) {
+    const pOpis = ((document.getElementById('przewodnik-opis')||{}).value || '').trim();
+    const pTryb = (document.getElementById('przewodnik-tryb')||{}).value || 'kwota';
+    if (pTryb === 'dni' && typeof przewodnikDni !== 'undefined') {
+      przewodnikDni.forEach((p,i)=> cr('Przewodnik — dzień '+(i+1), p.stawka, pOpis || 'stawka dzienna przewodnika'));
+    } else {
+      const pk = gv('przewodnik-kwota');
+      if (pk > 0) cr('Przewodnik (ryczałt za całość)', pk, pOpis || 'kwota za przewodnika');
+    }
   }
 
   // ── SŁUCHAWKI ──
@@ -3054,7 +3089,7 @@ init();
       'transport-staly','km','km-stawka','km-zakl','transport-kwota','drogi','parkingi',
       'ma-kierowca2','kierowca2-koszt','kierowca2-dni',
       'chce-umowe','samolot-lista','ma-samolot','samolot-kwota','ma-nocleg','nocleg-multi','noclegi-ile','nocleg-waluta',
-      'taksa','taksa-os','sluchawki','sluchawki-dni','ma-przewodnik','przewodnik-opis',
+      'taksa','taksa-os','sluchawki','sluchawki-dni','ma-przewodnik','przewodnik-tryb','przewodnik-kwota','przewodnik-opis',
       'ubezp-pl','ubezp-zagr','gadzet1-cena','gadzet1-szt','gadzet2-cena','gadzet2-szt',
       'ksiegowa','tfg','tfp','korekta-os','zaliczka','notatki'];
     const s={};
@@ -3063,12 +3098,13 @@ init();
     s.uslugi=JSON.parse(JSON.stringify(uslugi));
     s.rooms=JSON.parse(JSON.stringify(rooms));
     s.pilotDni=JSON.parse(JSON.stringify(pilotDni));
+    s.przewodnikDni=JSON.parse(JSON.stringify(przewodnikDni));
     return s;
   }
 
   function applyState(s){
     Object.keys(s).forEach(id=>{
-      if(['attractions','uslugi','rooms','pilotDni'].includes(id))return;
+      if(['attractions','uslugi','rooms','pilotDni','przewodnikDni'].includes(id))return;
       const el=document.getElementById(id);
       if(!el)return;
       if(el.type==='checkbox')el.checked=s[id]; else el.value=s[id];
@@ -3077,7 +3113,8 @@ init();
     uslugi=s.uslugi||[]; renderUslugi();
     rooms=s.rooms||[]; renderRooms();
     pilotDni=s.pilotDni||[]; renderPilotDni();
-    onKierunekChange(); onTransportToggle(); onNoclegToggle();
+    przewodnikDni=s.przewodnikDni||[]; renderPrzewodnikDni();
+    onKierunekChange(); onTransportToggle(); onNoclegToggle(); onPrzewodnikToggle();
     if(s['ma-samolot'])document.getElementById('samolot-block').style.display='';
     calc();
   }
