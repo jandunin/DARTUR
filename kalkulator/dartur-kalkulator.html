@@ -130,10 +130,13 @@
   /* ATRAKCJE */
   .attraction-row {
     display: grid;
-    grid-template-columns: 1fr 82px 62px 66px 44px 34px;
+    grid-template-columns: 1fr 78px 58px 58px 48px 52px 34px;
     gap: 8px;
     align-items: center;
     margin-bottom: 8px;
+  }
+  .attraction-row .gratis-cell, .attractions-header .gratis-cell {
+    display: flex; align-items: center; justify-content: center; gap: 4px;
   }
   .uslugi-header, .usluga-row {
     display: grid;
@@ -144,7 +147,7 @@
   }
   .przewodnicy-header, .przewodnik-row {
     display: grid;
-    grid-template-columns: 1fr 1.2fr 90px 72px 34px;
+    grid-template-columns: 1fr 1.1fr 84px 66px 52px 34px;
     gap: 8px;
     align-items: center;
     margin-bottom: 8px;
@@ -186,7 +189,7 @@
   }
   .attractions-header {
     display: grid;
-    grid-template-columns: 1fr 82px 62px 66px 44px 34px;
+    grid-template-columns: 1fr 78px 58px 58px 48px 52px 34px;
     gap: 8px;
     margin-bottom: 4px;
   }
@@ -793,11 +796,12 @@
               <span>Za co</span>
               <span>Kwota</span>
               <span>Waluta</span>
+              <span>Dzień</span>
               <span></span>
             </div>
             <div id="przewodnicy-list"></div>
             <button class="btn-add" onclick="addPrzewodnik()">＋ Dodaj przewodnika</button>
-            <div class="info-note" style="margin-top:8px">Każdy przewodnik = <strong>osobna pozycja z własną kwotą</strong> (ryczałt za jego pracę, nie dniówka). Przewodników może być kilku — np. „Przewodnik Praga" i „Przewodnik Zamek".</div>
+            <div class="info-note" style="margin-top:8px">Każdy przewodnik = <strong>osobna pozycja z własną kwotą</strong> (ryczałt za jego pracę, nie dniówka). Przewodników może być kilku — np. „Przewodnik Praga" i „Przewodnik Zamek". „Dzień" — którego dnia wycieczki (wpisz numer; <strong>dni nie muszą iść po kolei</strong>, zostaw puste jeśli bez przypisania). Układ dni przenosi się do rozliczenia pilota.</div>
           </div>
         </div>
 
@@ -948,12 +952,13 @@
           <span>Waluta</span>
           <span>Ile osób</span>
           <span>Dzień</span>
+          <span class="gratis-cell">Bezpł.</span>
           <span></span>
         </div>
         <div id="attractions-list"></div>
         <button class="btn-add" onclick="addAttraction()">＋ Dodaj własną atrakcję</button>
         <div class="info-note" style="margin-top:8px">
-          „Dzień" — którego dnia wycieczki jest atrakcja (1, 2, 3…). „Ile osób" — wpisz ręcznie żeby uwzględnić gratisy, pilota, opiekunów. <strong>0 = wszyscy uczestnicy + opiekunowie + pilot.</strong>
+          „Dzień" — którego dnia wycieczki jest atrakcja. Wpisujesz konkretny numer dnia ręcznie; dni <strong>nie muszą iść po kolei</strong> (np. atrakcje tylko w dniu 1 i 3). „Bezpł." — zaznacz, gdy atrakcja jest bezpłatna: nie doliczy się do kosztów, ale zostanie na liście do oferty. „Ile osób" — wpisz ręcznie żeby uwzględnić gratisy, pilota, opiekunów. <strong>0 = wszyscy uczestnicy + opiekunowie + pilot.</strong>
         </div>
         <div id="atrakcje-wg-dni" style="margin-top:12px"></div>
       </div>
@@ -1562,10 +1567,10 @@ function renderPilotDni() {
   });
 }
 // ====== PRZEWODNICY (lista pozycji: kto + za co + kwota) ======
-function addPrzewodnik() { addPrzewodnikItem('', '', 0, 'PLN'); }
-function addPrzewodnikItem(nazwa='', opis='', kwota=0, waluta='PLN') {
+function addPrzewodnik() { addPrzewodnikItem('', '', 0, 'PLN', ''); }
+function addPrzewodnikItem(nazwa='', opis='', kwota=0, waluta='PLN', dzien='') {
   const id = Date.now() + Math.random();
-  przewodnicy.push({id, nazwa, opis, kwota, waluta});
+  przewodnicy.push({id, nazwa, opis, kwota, waluta, dzien});
   renderPrzewodnicy(); calc();
 }
 function removePrzewodnik(id) {
@@ -1593,6 +1598,7 @@ function renderPrzewodnicy() {
         <option value="PLN" ${p.waluta==='PLN'?'selected':''}>PLN</option>
         <option value="EUR" ${p.waluta==='EUR'?'selected':''}>EUR</option>
       </select>
+      <input type="number" value="${p.dzien||''}" min="1" placeholder="—" onchange="updatePrzewodnik(${p.id},'dzien',this.value)" title="Którego dnia (wpisz numer; puste = bez przypisania). Dni nie muszą iść po kolei.">
       <button class="btn-del" onclick="removePrzewodnik(${p.id})">✕</button>
     `;
     list.appendChild(div);
@@ -1623,13 +1629,13 @@ function addPreset() {
   const val = sel.value;
   if(!val) return;
   const [nazwa, cena, waluta] = val.split('|');
-  addAttractionItem(nazwa, parseFloat(cena), waluta, 0, 1);
+  addAttractionItem(nazwa, parseFloat(cena), waluta, 0, 1, false);
   sel.value = '';
 }
-function addAttraction() { addAttractionItem('', 0, 'PLN', 0, 1); }
-function addAttractionItem(nazwa='', cena=0, waluta='PLN', os=0, dzien=1) {
+function addAttraction() { addAttractionItem('', 0, 'PLN', 0, 1, false); }
+function addAttractionItem(nazwa='', cena=0, waluta='PLN', os=0, dzien=1, gratis=false) {
   const id = Date.now() + Math.random();
-  attractions.push({id, nazwa, cena, waluta, os, dzien});
+  attractions.push({id, nazwa, cena, waluta, os, dzien, gratis: !!gratis});
   renderAttractions(); calc();
 }
 function removeAttraction(id) {
@@ -1642,15 +1648,20 @@ function renderAttractions() {
   attractions.forEach(a => {
     const div = document.createElement('div');
     div.className = 'attraction-row';
+    const gr = !!a.gratis;
+    const szary = 'opacity:0.4;background:#f3f4f6';
     div.innerHTML = `
       <input type="text" value="${a.nazwa}" placeholder="np. Zamek Królewski" onchange="updateAttr(${a.id},'nazwa',this.value)">
-      <input type="number" value="${a.cena}" min="0" step="0.5" onchange="updateAttr(${a.id},'cena',+this.value)">
-      <select onchange="updateAttr(${a.id},'waluta',this.value)">
+      <input type="number" value="${gr?0:a.cena}" min="0" step="0.5" onchange="updateAttr(${a.id},'cena',+this.value)" ${gr?'disabled':''} title="${gr?'Atrakcja bezpłatna — cena nie liczona':'Cena za osobę'}" style="${gr?szary:''}">
+      <select onchange="updateAttr(${a.id},'waluta',this.value)" ${gr?'disabled':''} style="${gr?szary:''}">
         <option value="PLN" ${a.waluta==='PLN'?'selected':''}>PLN</option>
         <option value="EUR" ${a.waluta==='EUR'?'selected':''}>EUR</option>
       </select>
-      <input type="number" value="${a.os||0}" min="0" placeholder="0=wszyscy" onchange="updateAttr(${a.id},'os',+this.value)" title="0=wszyscy uczestnicy+opiekunowie+pilot">
-      <input type="number" value="${a.dzien||1}" min="1" onchange="updateAttr(${a.id},'dzien',+this.value)" title="Dzień wycieczki (1, 2, 3…)">
+      <input type="number" value="${a.os||0}" min="0" placeholder="0=wszyscy" onchange="updateAttr(${a.id},'os',+this.value)" ${gr?'disabled':''} title="0=wszyscy uczestnicy+opiekunowie+pilot" style="${gr?szary:''}">
+      <input type="number" value="${a.dzien||1}" min="1" onchange="updateAttr(${a.id},'dzien',+this.value)" title="Którego dnia jest atrakcja — wpisz numer dnia (dni nie muszą iść po kolei)">
+      <label class="gratis-cell" title="Atrakcja bezpłatna — zostaje na liście, ale nie dolicza się do kosztów">
+        <input type="checkbox" ${gr?'checked':''} onchange="updateAttr(${a.id},'gratis',this.checked)">
+      </label>
       <button class="btn-del" onclick="removeAttraction(${a.id})">✕</button>
     `;
     list.appendChild(div);
@@ -1660,6 +1671,7 @@ function renderAttractions() {
 function updateAttr(id, field, val) {
   const a = attractions.find(x=>x.id===id);
   if(a) a[field] = val;
+  if(field === 'gratis') { renderAttractions(); calc(); return; }  // przełącz wyszarzenie ceny
   renderAtrakcjeWgDni();
   calc();
 }
@@ -1670,14 +1682,14 @@ function renderAtrakcjeWgDni() {
   const naz = attractions.filter(a => (a.nazwa||'').trim());
   if (!naz.length) { box.innerHTML = ''; return; }
   const byDay = {};
-  naz.forEach(a => { const d = parseInt(a.dzien)||1; (byDay[d] = byDay[d] || []).push(a.nazwa.trim()); });
+  naz.forEach(a => { const d = parseInt(a.dzien)||1; (byDay[d] = byDay[d] || []).push({nazwa: a.nazwa.trim(), gratis: !!a.gratis}); });
   const dni = Object.keys(byDay).map(Number).sort((x,y)=>x-y);
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const liter = 'abcdefghijklmnopqrstuwxyz';
   let html = '<div style="font-size:12px;font-weight:700;color:#1a3a6b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">🗓️ Atrakcje wg dni</div>';
   dni.forEach(d => {
     html += '<div style="margin-bottom:6px"><b>Dzień '+d+'</b><div style="padding-left:12px;color:#333;line-height:1.6">' +
-      byDay[d].map((n,i)=> (liter[i]||'•')+') '+esc(n)).join('<br>') + '</div></div>';
+      byDay[d].map((a,i)=> (liter[i]||'•')+') '+esc(a.nazwa)+(a.gratis?' <span style="color:#0a7d34;font-weight:600">(bezpłatnie)</span>':'')).join('<br>') + '</div></div>';
   });
   box.innerHTML = html;
 }
@@ -1912,6 +1924,7 @@ function calcTotal(nOs) {
   // ATRAKCJE — każda ma własną liczbę osób (EUR → zagranica)
   let atrakcjeKoszt = 0;
   attractions.forEach(a => {
+    if(a.gratis) return;                        // bezpłatna — zostaje na liście, ale bez kosztu
     let cena = a.cena;
     const osCount = (a.os && a.os > 0) ? a.os : allOs;
     if(a.waluta==='EUR') { cena *= kurs; zagr += cena * osCount; }
@@ -2072,15 +2085,21 @@ function pobierzCSVdoCanvy() {
   const klient = document.getElementById('klient').value;
   const maNocleg = document.getElementById('ma-nocleg').checked;
   const nNoc = maNocleg ? (parseInt(document.getElementById('noclegi-ile').value)||1) : 0;
-  const atrList = attractions.map(a=>`${a.nazwa}`).join(', ');
+  // nazwa atrakcji + „(bezpłatnie)" dla gratisów (pomoc dla Claude przy ofercie)
+  const atrEtyk = a => `${a.nazwa}${a.gratis?' (bezpłatnie)':''}`;
+  const atrList = attractions.filter(a=>(a.nazwa||'').trim()).map(atrEtyk).join(', ');
+  // atrakcje pogrupowane po DNIU (a nie wszystkie w Dzień 1)
+  const atrWgDni = {};
+  attractions.filter(a=>(a.nazwa||'').trim()).forEach(a=>{ const d=parseInt(a.dzien)||1; (atrWgDni[d]=atrWgDni[d]||[]).push(atrEtyk(a)); });
+  const opisDnia = (d, fallback) => atrWgDni[d] ? `Zwiedzanie: ${atrWgDni[d].join(', ')}.` : fallback;
 
-  // Buduj program dni
+  // Buduj program dni — każdy dzień dostaje SWOJE atrakcje
   const dzien1nazwa = `Dzień 1 – ${kierunek.split(/[-–]/)[0].trim()}`;
-  const dzien1opis = atrList ? `Zwiedzanie: ${atrList}` : 'Zwiedzanie według programu wycieczki.';
+  const dzien1opis = opisDnia(1, atrList ? `Zwiedzanie: ${atrList}.` : 'Zwiedzanie według programu wycieczki.');
   const dzien2nazwa = dni >= 2 ? `Dzień 2 – Zwiedzanie` : '';
-  const dzien2opis = dni >= 2 ? 'Kontynuacja programu wycieczki.' : '';
+  const dzien2opis = dni >= 2 ? opisDnia(2, 'Kontynuacja programu wycieczki.') : '';
   const dzien3nazwa = dni >= 3 ? `Dzień 3 – Powrót` : '';
-  const dzien3opis = dni >= 3 ? 'Zwiedzanie i powrót do miejsca zamieszkania.' : '';
+  const dzien3opis = dni >= 3 ? opisDnia(3, 'Zwiedzanie i powrót do miejsca zamieszkania.') : '';
 
   const wCenie = ['Transport autokarem', 'Parkingi i opłaty drogowe', 'Opieka pilota',
     maNocleg ? `Noclegi (${nNoc} noce)` : null,
@@ -2659,13 +2678,16 @@ function generateGoogleSheet() {
   // ── PILOT / PRZEWODNIK (dzień po dniu) ──
   pilotDni.forEach((p,i)=> cr('Pilot — dzień '+(i+1), p.stawka, 'stawka dzienna pilota'));
   if (gc('ma-przewodnik')) {
-    przewodnicy.forEach(p => {
+    // sort po dniu (pozycje bez dnia na końcu) — układ dni przenosi się do rozliczenia pilota
+    przewodnicy.slice().sort((x,y)=>((parseInt(x.dzien)||9999)-(parseInt(y.dzien)||9999))).forEach(p => {
       const kw = parseFloat(p.kwota) || 0;
       if (!kw) return;
       const eur = (p.waluta === 'EUR');
       const nazwa = (p.nazwa || '').trim() || 'Przewodnik';
+      const dzien = parseInt(p.dzien) || 0;
+      const etyk = 'Przewodnik' + (dzien ? ' (Dzień '+dzien+')' : '') + ': ' + nazwa;
       const opis = ((p.opis || '').trim() || 'kwota za całość') + (eur ? ' (EUR → zagranica)' : '');
-      const r = cr('Przewodnik: ' + nazwa, eur ? kw * kurs : kw, opis, 1, kw);
+      const r = cr(etyk, eur ? kw * kurs : kw, opis, 1, kw);
       fadd('B'+r, eur ? '=E'+r+'*'+KURS : '=E'+r);
     });
   }
@@ -2685,11 +2707,15 @@ function generateGoogleSheet() {
   });
 
   // ── ATRAKCJE (pozycja po pozycji, POSORTOWANE PO DNIACH; EUR → zagranica) ──
+  // Bezpłatne też trafiają na listę (val=0, dopisek „bezpłatnie") — pomoc przy ofercie.
   attractions.slice().sort((x,y)=>((x.dzien||1)-(y.dzien||1))).forEach(a => {
+    const gr = !!a.gratis;
     const eur = a.waluta==='EUR';
     const oc = (a.os && a.os>0)?a.os:allOs;
-    let val = (a.cena||0)*oc; if(eur) val*=kurs;
-    const r=cr('Atrakcja (Dzień '+(a.dzien||1)+'): '+(a.nazwa||'bilet'), val, eur?'cena × osoby (EUR → zagranica)':'cena × osoby', oc, a.cena||0);
+    let val = gr ? 0 : (a.cena||0)*oc; if(eur && !gr) val*=kurs;
+    const etyk = 'Atrakcja (Dzień '+(a.dzien||1)+'): '+(a.nazwa||'bilet')+(gr?' — bezpłatnie':'');
+    if (gr) { cr(etyk, 0, 'atrakcja bezpłatna (0 zł)'); return; }
+    const r=cr(etyk, val, eur?'cena × osoby (EUR → zagranica)':'cena × osoby', oc, a.cena||0);
     fadd('B'+r, eur ? '=D'+r+'*E'+r+'*'+KURS : '=D'+r+'*E'+r);
   });
 
