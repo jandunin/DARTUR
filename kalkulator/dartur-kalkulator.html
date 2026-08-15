@@ -692,6 +692,7 @@
               <span class="unit-label">zł</span>
             </div>
           </div>
+          <div class="info-note" style="margin-top:8px">Doliczane <strong>niezależnie</strong> od sekcji „Transport lotniczy" — używaj tego pola, gdy bilety uczestników liczysz osobno.</div>
         </div>
       </div>
     </div>
@@ -753,12 +754,12 @@
           <div id="taksa-block" style="margin-top:14px">
             <div class="field-row">
               <div class="field">
-                <label>Domyślna taksa klimatyczna (na os/dobę)</label>
+                <label>Taksa klimatyczna (na os/dobę)</label>
                 <div class="input-unit">
-                  <input type="number" id="taksa" value="0" step="0.50" oninput="calc()">
+                  <input type="number" id="taksa" value="0" step="0.50" oninput="onTaksaDomyslna()">
                   <span class="unit-label" id="taksa-unit">w walucie noclegu</span>
                 </div>
-                <div style="font-size:11px;color:var(--gray);margin-top:4px">Podpowiedź dla nowych noclegów — taksę wpisuje się przy KAŻDYM noclegu w kolumnie „Taksa/os" (część hoteli ma taksę, część nie). Liczona: taksa × wszyscy (z pilotem) × doby.</div>
+                <div style="font-size:11px;color:var(--gray);margin-top:4px">Wpisana tutaj taksa <strong>wchodzi od razu do wszystkich noclegów</strong> (widać ją w kolumnie „Taksa/os"). Hotel bez taksy? Wpisz przy nim 0 w tabeli. Liczona: taksa × osoby × doby.</div>
               </div>
               <div class="field">
                 <label>Taksa dotyczy osób</label>
@@ -1297,6 +1298,15 @@ function addRoom(typ='2-osobowy Hotel A', os=2, ile=5, cena=220, noc=2, taksa=nu
   // obiekt: nazwa hotelu/obiektu (tryb „różne obiekty")
   rooms.push({id, typ, os, ile, cena, noc, taksa: taksaDef, tryb, obiekt});
   renderRooms(); calc();
+}
+// Taksa wpisana w polu głównym wchodzi DO WSZYSTKICH noclegów (widać ją w kolumnie
+// „Taksa/os"). Wcześniej była tylko podpowiedzią przy dodawaniu pokoju — pracownik
+// wpisywał taksę po dodaniu hoteli i nic się nie liczyło.
+function onTaksaDomyslna() {
+  const v = parseFloat((document.getElementById('taksa')||{}).value) || 0;
+  rooms.forEach(r => { r.taksa = v; });
+  renderRooms();
+  calc();
 }
 function noclegMultiOn() { const el = document.getElementById('nocleg-multi'); return !!(el && el.checked); }
 function onNoclegMultiToggle() { renderRooms(); calc(); }
@@ -1864,6 +1874,11 @@ function calcTotal(nOs) {
       lotKoszt += parseFloat(document.getElementById('lot-pilot-kwota').value)||0;
     }
   }
+  // Bilet lotniczy pilota z sekcji PILOT — NIEZALEŻNY od „Wycieczka z lotem"
+  // (bilety uczestników często liczone osobno, więc sekcja lotnicza bywa wyłączona).
+  if(document.getElementById('ma-samolot') && document.getElementById('ma-samolot').checked) {
+    lotKoszt += parseFloat((document.getElementById('samolot-kwota')||{}).value)||0;
+  }
 
   // ZAGRANICA = koszty liczone w EUR (auto): pokoje EUR + atrakcje EUR. Do podziału VAT.
   let zagr = 0;
@@ -1884,8 +1899,19 @@ function calcTotal(nOs) {
       if(nocWaluta==='EUR') kwota *= kurs;
       noclegBaza += kwota;
       if(nocWaluta==='EUR') zagr += kwota;
-      // taksa per nocleg: taksa(os/doba) × wszyscy (z pilotem) × doby tego noclegu
-      let tk = (r.taksa||0) * taksaOsCount * noc;
+    });
+    // TAKSA KLIMATYCZNA — liczona RAZ NA OBIEKT (taksa × osoby × doby), a NIE przy
+    // każdym typie pokoju. Wcześniej dwa typy pokoi w tym samym hotelu = podwójna taksa.
+    const grupy = {};
+    rooms.forEach(r => {
+      const key = (r.obiekt||'').trim().toLowerCase() || '__jeden_obiekt__';
+      const noc = r.noc || parseInt(document.getElementById('noclegi-ile').value)||1;
+      const g = grupy[key] = grupy[key] || {stawka:0, noce:0};
+      g.stawka = Math.max(g.stawka, r.taksa||0);
+      g.noce   = Math.max(g.noce, noc);
+    });
+    Object.keys(grupy).forEach(k => {
+      let tk = grupy[k].stawka * taksaOsCount * grupy[k].noce;
       if(nocWaluta==='EUR') { tk *= kurs; zagr += tk; }
       taksaKoszt += tk;
     });
@@ -2653,6 +2679,8 @@ function generateGoogleSheet() {
     if (gv('lot-inne')>0) cr('Lot — inne (bagaż, opłaty)', gv('lot-inne'), 'koszt stały');
     if (gc('lot-pilot') && gv('lot-pilot-kwota')>0) cr('Lot — bilet pilota', gv('lot-pilot-kwota'), 'koszt stały');
   }
+  // bilet lotniczy pilota z sekcji PILOT (niezależny od „Wycieczka z lotem")
+  if (gc('ma-samolot') && gv('samolot-kwota')>0) cr('Bilet lotniczy pilota', gv('samolot-kwota'), 'koszt stały');
 
   // ── NOCLEG (pokój po pokoju + taksa per nocleg) ──
   if (gc('ma-nocleg')) {
@@ -2667,11 +2695,23 @@ function generateGoogleSheet() {
       const etykietaN = 'Nocleg: ' + ((rm.obiekt||'').trim() ? (rm.obiekt.trim()+' — ') : '') + (rm.typ||'pokój');
       const r = cr(etykietaN, val, opis, liczba, rm.cena||0, noc);
       fadd('B'+r, eur ? '=D'+r+'*E'+r+'*F'+r+'*'+KURS : '=D'+r+'*E'+r+'*F'+r);
-      if ((rm.taksa||0)>0) {
-        let tv = rm.taksa*taksaOsC*noc; if(eur) tv*=kurs;
-        const r2 = cr('Taksa klim.: '+(rm.typ||'pokój'), tv, 'taksa/os/doba × wszyscy × doby'+(eur?' (EUR)':''), taksaOsC, rm.taksa, noc);
-        fadd('B'+r2, eur ? '=D'+r2+'*E'+r2+'*F'+r2+'*'+KURS : '=D'+r2+'*E'+r2+'*F'+r2);
-      }
+    });
+    // TAKSA — jeden wiersz NA OBIEKT (nie przy każdym typie pokoju)
+    const grT = {};
+    rooms.forEach(rm => {
+      const key = (rm.obiekt||'').trim() || '';
+      const noc = rm.noc || gi('noclegi-ile') || 1;
+      const g = grT[key.toLowerCase()] = grT[key.toLowerCase()] || {nazwa:key, stawka:0, noce:0};
+      g.stawka = Math.max(g.stawka, rm.taksa||0);
+      g.noce   = Math.max(g.noce, noc);
+    });
+    Object.keys(grT).forEach(k => {
+      const g = grT[k];
+      if (!(g.stawka > 0)) return;
+      let tv = g.stawka*taksaOsC*g.noce; if(eur) tv*=kurs;
+      const r2 = cr('Taksa klimatyczna' + (g.nazwa ? ': '+g.nazwa : ''), tv,
+                    'taksa/os/doba × osoby × doby'+(eur?' (EUR)':''), taksaOsC, g.stawka, g.noce);
+      fadd('B'+r2, eur ? '=D'+r2+'*E'+r2+'*F'+r2+'*'+KURS : '=D'+r2+'*E'+r2+'*F'+r2);
     });
   }
 
@@ -3139,8 +3179,10 @@ init();
       'transport-staly','km','km-stawka','km-zakl','transport-kwota','drogi','parkingi',
       'ma-kierowca2','kierowca2-koszt','kierowca2-dni',
       'chce-umowe','samolot-lista','ma-samolot','samolot-kwota','ma-nocleg','nocleg-multi','noclegi-ile','nocleg-waluta',
-      'taksa','taksa-os','sluchawki','sluchawki-dni','ma-przewodnik',
-      'ubezp-pl','ubezp-zagr','gadzet1-cena','gadzet1-szt','gadzet2-cena','gadzet2-szt',
+      'taksa','taksa-os','ma-sluchawki','sluchawki','sluchawki-os','sluchawki-dni','ma-przewodnik',
+      'ma-lot','lot-bilet','lot-os','lot-bus','lot-inne','lot-pilot','lot-pilot-kwota',
+      'ubezp-pl','ubezp-pl-wl','ubezp-pl-dni','ubezp-zagr','ubezp-zagr-wl','ubezp-zagr-dni','ubezp-os',
+      'sporzadzil','gadzet1-cena','gadzet1-szt','gadzet2-cena','gadzet2-szt',
       'ksiegowa','tfg','tfp','korekta-os','zaliczka','notatki'];
     const s={};
     ids.forEach(id=>{const el=document.getElementById(id);if(!el)return;s[id]=el.type==='checkbox'?el.checked:el.value;});
@@ -3149,12 +3191,20 @@ init();
     s.rooms=JSON.parse(JSON.stringify(rooms));
     s.pilotDni=JSON.parse(JSON.stringify(pilotDni));
     s.przewodnicy=JSON.parse(JSON.stringify(przewodnicy));
+    s.wyzywienie=JSON.parse(JSON.stringify(wyzywienie));
+    // pola nadpisane RĘCZNIE (dni ubezpieczenia, dni słuchawek, osoby) — bez tej flagi
+    // po wczytaniu wracały do wartości liczonej z dat i kwota się zmieniała
+    s.__reczne={};
+    ['ubezp-os','ubezp-pl-dni','ubezp-zagr-dni','sluchawki-dni','sluchawki-os'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el && el.dataset && el.dataset.auto==='0') s.__reczne[id]=true;
+    });
     return s;
   }
 
   function applyState(s){
     Object.keys(s).forEach(id=>{
-      if(['attractions','uslugi','rooms','pilotDni','przewodnikDni','przewodnicy'].includes(id))return;
+      if(['attractions','uslugi','rooms','pilotDni','przewodnikDni','przewodnicy','wyzywienie','__reczne'].includes(id))return;
       const el=document.getElementById(id);
       if(!el)return;
       if(el.type==='checkbox')el.checked=s[id]; else el.value=s[id];
@@ -3176,7 +3226,18 @@ init();
       }
     }
     renderPrzewodnicy();
+    if (s.wyzywienie) { wyzywienie = s.wyzywienie; renderWyzywienie(); }
+    // przywróć flagi „ustawione ręcznie", żeby auto-przeliczanie ich nie nadpisało
+    Object.keys(s.__reczne || {}).forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.dataset.auto='0';
+    });
     onKierunekChange(); onTransportToggle(); onNoclegToggle(); onPrzewodnikToggle();
+    // przywróć widoczność sekcji zwijanych (inaczej pola są ukryte mimo zaznaczenia)
+    if(typeof onLotToggle === 'function') onLotToggle();
+    if(typeof onSluchawkiToggle === 'function') onSluchawkiToggle();
+    const lpb = document.getElementById('lot-pilot-block');
+    if(lpb) lpb.style.display = s['lot-pilot'] ? '' : 'none';
     if(s['ma-samolot'])document.getElementById('samolot-block').style.display='';
     calc();
   }
